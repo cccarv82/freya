@@ -78,12 +78,17 @@ Organize seu dia-a-dia com um sistema de tarefas integrado.
 ### 6. Relatórios Automatizados
 Transforme seus logs em relatórios úteis sem esforço. Peça à FREYA no chat e ela executará os scripts para você.
 
-*   **Relatório Semanal:**
+*   **Relatório de Status Profissional (Novo):**
+    > "Gerar status report", "Relatório Executivo"
+    *   *Resultado:* Gera um relatório Markdown completo com Resumo Executivo, Entregas, Status de Projetos e Bloqueios. Ideal para enviar stakeholders.
+    *   *Manual:* `npm run status -- --period [daily|weekly]`
+
+*   **Relatório Semanal (Legado):**
     > "Gerar relatório semanal"
     *   *Resultado:* A FREYA executa o script e avisa onde o arquivo Markdown foi salvo em `docs/reports/`, exibindo um resumo.
     *   *Manual:* `npm run report`
 
-*   **Resumo Daily (Standup):**
+*   **Resumo Daily (Legado):**
     > "Gerar daily" ou "Resumo diário"
     *   *Resultado:* A FREYA gera e exibe o texto "Ontem / Hoje / Bloqueios" diretamente no chat.
     *   *Manual:* `npm run daily`
@@ -103,6 +108,14 @@ Deixe a Freya cuidar do versionamento básico do seu código.
     > "Salvar alterações", "Gerar commit" ou "Commitar"
     *   *Resultado:* A Freya executa `git status`, analisa o `git diff` para entender o que mudou, gera uma mensagem de commit semântica e realiza o commit (`git add .` + `git commit`).
     *   *Nota:* Ela sempre pedirá confirmação ou avisará se não houver mudanças.
+
+### 9. Detecção Implícita de Tarefas
+A Freya agora entende suas intenções futuras sem precisar de comandos explícitos.
+
+*   **Detecção Inteligente:**
+    > "O projeto X atrasou porque *preciso configurar o servidor*."
+    *   *Resultado:* A Freya cria automaticamente a tarefa "Configurar o servidor" e a vincula ao projeto X.
+    *   *Palavras-chave:* "preciso", "tenho que", "falta", "vou", "pendente".
 
 ---
 

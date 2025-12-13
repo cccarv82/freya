@@ -5,7 +5,8 @@
   "scripts": {
     "health": "node scripts/validate-data.js",
     "report": "node scripts/generate-weekly-report.js",
-    "daily": "node scripts/generate-daily-summary.js"
+    "daily": "node scripts/generate-daily-summary.js",
+    "status": "node scripts/generate-executive-report.js"
   },
   "keywords": [],
   "author": "",

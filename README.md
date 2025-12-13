@@ -26,6 +26,7 @@ F.R.E.Y.A. é um sistema de agentes de IA projetado para organizar seu trabalho,
 Você pode pedir para a FREYA executar estas tarefas diretamente no chat, ou rodar via terminal:
 
 *   **Checar integridade:** "Verifique a saúde do sistema" (ou `npm run health`)
+*   **Relatório Profissional:** "Gere o status report" (ou `npm run status`)
 *   **Relatório semanal:** "Gere o relatório semanal" (ou `npm run report`)
 *   **Resumo daily:** "Gere o daily" (ou `npm run daily`)
 

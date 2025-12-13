@@ -1,19 +1,31 @@
 
-### Epic 10: Git Automation
-Implementar integração com Git para permitir que a Freya realize commits e outras operações básicas de controle de versão através de comandos em linguagem natural.
+### Epic 11: Intelligent Status & Reporting Evolution
+Evoluir a inteligência da Freya para inferir tarefas automaticamente e gerar relatórios de status executivos profissionais (Diário/Semanal) que consolidem tarefas, registros diários (logs) e status de projetos.
 
-### Story 10.1: Implement Auto-Commit Command
-
+### Story 11.1: Implement Implicit Task Detection
 As a User,
-I want to ask Freya to "Generate a commit" or "Save my changes",
-So that she automatically stages files, generates a friendly commit message, and commits the changes without me needing to use the terminal.
+I want Freya to automatically detect and create tasks when I mention future actions in my status updates (e.g., "preciso configurar X"),
+So that I don't have to explicitly say "Create task" every time.
 
 **Acceptance Criteria:**
+1. **Given** a user input like "O projeto atrasou porque preciso configurar o servidor",
+2. **When** the ingestor processes the text,
+3. **Then** it should identify "Configurar o servidor" as a potential task.
+4. **And** it should check if a similar task already exists (deduplication).
+5. **And** if not, it should create a task in `task-log.json` linked to the relevant project.
+6. **And** it should inform the user: "Detectei e criei a tarefa: [descrição]".
 
-1. **Given** a user request like "Gere um commit", "Salvar alterações" or "Commitar",
-2. **When** the agent processes the request,
-3. **Then** it should execute `git status` to check for changes.
-4. **And** if there are changes, it should execute `git diff` to understand what changed.
-5. **And** it should generate a concise, friendly commit message describing the changes.
-6. **And** it should execute `git add .` and `git commit -m "message"`.
-7. **And** it should confirm the commit to the user.
+### Story 11.2: Implement Professional Status Report Generator
+As a User,
+I want to generate a "Professional Status Report" (Daily/Weekly) that aggregates Tasks, Project Updates, and Daily Logs into a structured executive summary,
+So that I can send it to stakeholders without manual editing.
+
+**Acceptance Criteria:**
+1. **Given** data in `task-log.json`, `status.json` (projects), and `logs/daily/*.md`,
+2. **When** I ask for "Gerar status report",
+3. **Then** the system should aggregate:
+    *   **Completed Tasks:** From `task-log.json`.
+    *   **Project Progress:** From `status.json` history.
+    *   **Context/Notes:** Extract relevant summaries from `logs/daily`.
+4. **And** it should format the output into sections: "Resumo Executivo", "Principais Entregas", "Pontos de Atenção/Bloqueios", "Próximos Passos".
+5. **And** the output should be polished and professional (Markdown).

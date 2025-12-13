@@ -96,3 +96,8 @@ development_status:
   epic-10: done
   10-1-implement-auto-commit-command: done
   epic-10-retrospective: done
+
+  epic-11: done
+  11-1-implement-implicit-task-detection: done
+  11-2-implement-professional-status-report-generator: done
+  epic-11-retrospective: done

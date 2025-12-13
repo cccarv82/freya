@@ -34,7 +34,11 @@ This ensures no data is lost even if the subsequent steps fail.
     *   Classify each context into one of: `Project`, `Career`, `Blocker`, `General`, `Task`.
     *   **Detect Archival:** If the user says "Arquivar", "Archive", "Fechar projeto", set action to `Archive`.
     *   **Detect Task:** 
-        *   **Creation:** If input implies "Lembre-me", "To-Do", "Tarefa", classify as `Task`. Action: `Create`. Infer category (`DO_NOW`, `SCHEDULE`, `DELEGATE`, `IGNORE`).
+        *   **Explicit Creation:** If input implies "Lembre-me", "To-Do", "Tarefa", classify as `Task`. Action: `Create`. Infer category (`DO_NOW`, `SCHEDULE`, `DELEGATE`, `IGNORE`).
+        *   **Implicit Detection:** Scan for intent patterns like "preciso [fazer X]", "tenho que [fazer X]", "vou [fazer X]", "falta [X]", "pendente".
+            *   If found, extract the action as the description.
+            *   **Multi-Domain:** If this was part of a Project update (e.g., "Projeto X atrasou porque *falta configurar Y*"), generate TWO events: one for Project Update and one for Task Creation.
+            *   **Linking:** If a Project entity was detected in the same context, pass the Client/Project info to the Task event so it can be linked.
         *   **Completion:** If input implies "Terminei", "Check", "Feito", "Concluído", "Marcar como feito", classify as `Task`. Action: `Complete`. Extract `taskId` (e.g., "1a2b") if present, or `description` for matching.
     *   **Output:** Generate a JSON Array containing the extracted events.
 
@@ -106,20 +110,26 @@ This ensures no data is lost even if the subsequent steps fail.
                         *   **1 Match:** Update `status` to "COMPLETED", set `completedAt` to `{timestamp}`.
                         *   **>1 Matches:** Inform user "Ambiguous match", list candidates.
                 *   **If action == "Create":**
-                    *   Generate a unique ID (UUID or timestamp).
-                    *   Construct the task object:
-                        ```json
-                        {
-                          "id": "{unique_id}",
-                          "description": "{content}",
-                          "category": "{inferred_category}",
-                          "status": "PENDING",
-                          "createdAt": "{timestamp}",
-                          "priority": "{optional_priority}",
-                          "projectSlug": "{optional_project_slug}"
-                        }
-                        ```
-                    *   Append object to the `tasks` array.
+                    *   **Deduplication Check:**
+                        *   Scan existing `tasks` where `status == "PENDING"`.
+                        *   Check if any `description` is significantly similar (fuzzy match or containment) to the new task.
+                        *   **If Match Found:** Skip creation. Add a note to the response: "Task '[Description]' already exists (ID: {id})."
+                        *   **If No Match:**
+                            *   Generate a unique ID (UUID or timestamp).
+                            *   Derive `projectSlug` from `client` and `project` entities if present (format: `client-project`).
+                            *   Construct the task object:
+                                ```json
+                                {
+                                  "id": "{unique_id}",
+                                  "description": "{content}",
+                                  "category": "{inferred_category}",
+                                  "status": "PENDING",
+                                  "createdAt": "{timestamp}",
+                                  "priority": "{optional_priority}",
+                                  "projectSlug": "{derived_project_slug_or_null}"
+                                }
+                                ```
+                            *   Append object to the `tasks` array.
             4.  **Write:** Save the updated JSON.
 
 6.  **Ambiguity Check:**
