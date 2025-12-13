@@ -12,6 +12,7 @@ F.R.E.Y.A. é um sistema de agentes de IA projetado para organizar seu trabalho,
 *   **Career Coach:** Gere "Brag Sheets" automáticas para suas avaliações de desempenho.
 *   **Relatórios Automatizados:** Gere resumos semanais ou dailies instantâneos.
 *   **Saúde do Sistema:** Valide a integridade dos seus dados locais com um comando.
+*   **Git Automation:** Gere commits inteligentes automaticamente. A Freya analisa suas mudanças e escreve a mensagem para você.
 *   **Privacidade Total:** Seus dados (JSON e Markdown) ficam 100% locais na sua máquina.
 
 ## 🚀 Como Usar

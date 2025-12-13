@@ -96,6 +96,14 @@ Garanta que seus dados locais estão íntegros.
     *   *Resultado:* A FREYA roda o diagnóstico e reporta se todos os JSONs estão válidos ou se há erros para corrigir.
     *   *Manual:* `npm run health`
 
+### 8. Git Automation
+Deixe a Freya cuidar do versionamento básico do seu código.
+
+*   **Auto-Commit:**
+    > "Salvar alterações", "Gerar commit" ou "Commitar"
+    *   *Resultado:* A Freya executa `git status`, analisa o `git diff` para entender o que mudou, gera uma mensagem de commit semântica e realiza o commit (`git add .` + `git commit`).
+    *   *Nota:* Ela sempre pedirá confirmação ou avisará se não houver mudanças.
+
 ---
 
 ## 💡 Dicas de Uso
