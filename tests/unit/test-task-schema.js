@@ -12,6 +12,11 @@ try {
   const content = fs.readFileSync(taskLogPath, 'utf8');
   const json = JSON.parse(content);
 
+  if (json.schemaVersion === undefined || typeof json.schemaVersion !== 'number') {
+    console.error('❌ FAIL: "schemaVersion" is missing or not a number');
+    process.exit(1);
+  }
+
   if (!Array.isArray(json.tasks)) {
     console.error('❌ FAIL: "tasks" is not an array');
     process.exit(1);

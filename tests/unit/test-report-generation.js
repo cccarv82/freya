@@ -18,6 +18,7 @@ const mockProjectStatus = {
 };
 
 const mockTaskLog = {
+    schemaVersion: 1,
     tasks: [
         { id: "1", description: "Fix bug", status: "COMPLETED", completedAt: daysAgo(1) },
         { id: "2", description: "Write docs", status: "COMPLETED", completedAt: daysAgo(8) }, // Should be filtered out
@@ -26,6 +27,7 @@ const mockTaskLog = {
 };
 
 const mockCareerLog = {
+    schemaVersion: 1,
     entries: [
         { date: daysAgo(3), type: "Feedback", description: "Great job on the launch" },
         { date: daysAgo(15), type: "Goal", description: "Learn Rust" } // Should be filtered out

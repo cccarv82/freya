@@ -9,6 +9,9 @@ const DATA_DIR = path.join(__dirname, '../data');
 
 function validateTaskLog(json, file) {
   const errors = [];
+  if (json.schemaVersion !== undefined && typeof json.schemaVersion !== 'number') {
+    errors.push("Root must have numeric 'schemaVersion' when present.");
+  }
   if (!Array.isArray(json.tasks)) {
     errors.push(`Root must have 'tasks' array.`);
     return errors;
@@ -37,6 +40,9 @@ function validateTaskLog(json, file) {
 
 function validateCareerLog(json, file) {
   const errors = [];
+  if (json.schemaVersion !== undefined && typeof json.schemaVersion !== 'number') {
+    errors.push("Root must have numeric 'schemaVersion' when present.");
+  }
   if (!Array.isArray(json.entries)) {
     errors.push(`Root must have 'entries' array.`);
     return errors;

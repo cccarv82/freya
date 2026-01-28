@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { spawnSync } = require('child_process');
 
 const repoRoot = path.join(__dirname, '../..');
 const tasksPath = path.join(repoRoot, 'data/tasks/task-log.json');
@@ -20,6 +20,7 @@ function daysAgo(n) {
 try {
   // seed tasks
   const tasks = {
+    schemaVersion: 1,
     tasks: [
       { id: 't1', description: 'Ship thing', category: 'DO_NOW', status: 'COMPLETED', createdAt: daysAgo(8), completedAt: daysAgo(2) },
       { id: 't2', description: 'Prep deck', category: 'DO_NOW', status: 'PENDING', createdAt: daysAgo(1) }
@@ -36,7 +37,11 @@ try {
   };
   fs.writeFileSync(blockersPath, JSON.stringify(blockers, null, 2));
 
-  const out = execSync('node scripts/generate-sm-weekly-report.js', { cwd: repoRoot, encoding: 'utf8' });
+  const res = spawnSync('node', ['scripts/generate-sm-weekly-report.js'], { cwd: repoRoot, encoding: 'utf8' });
+  if (res.status !== 0) {
+    throw new Error(`generate-sm-weekly-report failed: ${res.stderr || res.stdout || 'unknown error'}`);
+  }
+  const out = res.stdout;
 
   if (!out.includes('## Summary')) throw new Error('missing Summary section');
   if (!out.includes('## Wins')) throw new Error('missing Wins section');
