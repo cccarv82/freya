@@ -78,6 +78,39 @@ function validateProjectStatus(json, file) {
   return errors;
 }
 
+function validateBlockerLog(json, file) {
+  const errors = [];
+  if (typeof json.schemaVersion !== 'number') {
+    errors.push("Root must have numeric 'schemaVersion'.");
+  }
+  if (!Array.isArray(json.blockers)) {
+    errors.push("Root must have 'blockers' array.");
+    return errors;
+  }
+
+  const validStatuses = ['OPEN', 'MITIGATING', 'RESOLVED'];
+  const validSeverities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+
+  json.blockers.forEach((b, i) => {
+    const prefix = `Blocker[${i}]`;
+    if (!b.id) errors.push(`${prefix} missing 'id'.`);
+    if (!b.title) errors.push(`${prefix} missing 'title'.`);
+    if (!b.description) errors.push(`${prefix} missing 'description'.`);
+    if (!b.createdAt) errors.push(`${prefix} missing 'createdAt'.`);
+    if (!b.status) errors.push(`${prefix} missing 'status'.`);
+    if (!b.severity) errors.push(`${prefix} missing 'severity'.`);
+
+    if (b.status && !validStatuses.includes(String(b.status).toUpperCase())) {
+      errors.push(`${prefix} invalid status '${b.status}'.`);
+    }
+    if (b.severity && !validSeverities.includes(String(b.severity).toUpperCase())) {
+      errors.push(`${prefix} invalid severity '${b.severity}'.`);
+    }
+  });
+
+  return errors;
+}
+
 // --- Main Logic ---
 
 function walk(dir, fileList = []) {
@@ -137,6 +170,8 @@ function validateData() {
             fileErrors = validateCareerLog(json, relativePath);
         } else if (file.endsWith('status.json')) {
             fileErrors = validateProjectStatus(json, relativePath);
+        } else if (file.endsWith('blocker-log.json')) {
+            fileErrors = validateBlockerLog(json, relativePath);
         } else {
             // Optional: warn about unknown files, or ignore
             // console.warn(`⚠️ [${relativePath}] Unknown JSON file type. Skipping schema validation.`);
