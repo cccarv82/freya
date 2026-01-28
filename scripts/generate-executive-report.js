@@ -10,6 +10,7 @@ const fs = require('fs');
 const path = require('path');
 
 const { toIsoDate, isWithinRange } = require('./lib/date-utils');
+const { safeReadJson, quarantineCorruptedFile } = require('./lib/fs-utils');
 
 // --- Configuration ---
 const DATA_DIR = path.join(__dirname, '../data');
@@ -48,26 +49,32 @@ function ensureDir(dir) {
 function getTasks(start, end) {
     if (!fs.existsSync(TASKS_FILE)) return { completed: [], pending: [], blockers: [] };
     
-    try {
-        const data = JSON.parse(fs.readFileSync(TASKS_FILE, 'utf8'));
-        const tasks = data.tasks || [];
-
-        const completed = tasks.filter(t => {
-            if (t.status !== 'COMPLETED' || !t.completedAt) return false;
-            return isWithinRange(t.completedAt, start, end);
-        });
-
-        const pending = tasks.filter(t => t.status === 'PENDING' && t.category === 'DO_NOW');
-        
-        // "Blockers" could be tasks tagged as such or implicit in status? 
-        // For now, we don't have explicit blocker task type, but we can look for high priority or specific keywords if we wanted.
-        // Let's stick to simple PENDING DO_NOW for Next Steps.
-        
-        return { completed, pending };
-    } catch (e) {
-        console.error("Error reading tasks:", e.message);
+    const result = safeReadJson(TASKS_FILE);
+    if (!result.ok) {
+        const relativePath = path.relative(DATA_DIR, TASKS_FILE);
+        if (result.error.type === 'parse') {
+            quarantineCorruptedFile(TASKS_FILE, result.error.message);
+            console.warn(`⚠️ [${relativePath}] JSON parse failed; quarantined to _corrupted.`);
+        } else {
+            console.error(`Error reading tasks: ${result.error.message}`);
+        }
         return { completed: [], pending: [] };
     }
+
+    const tasks = result.json.tasks || [];
+
+    const completed = tasks.filter(t => {
+        if (t.status !== 'COMPLETED' || !t.completedAt) return false;
+        return isWithinRange(t.completedAt, start, end);
+    });
+
+    const pending = tasks.filter(t => t.status === 'PENDING' && t.category === 'DO_NOW');
+    
+    // "Blockers" could be tasks tagged as such or implicit in status? 
+    // For now, we don't have explicit blocker task type, but we can look for high priority or specific keywords if we wanted.
+    // Let's stick to simple PENDING DO_NOW for Next Steps.
+    
+    return { completed, pending };
 }
 
 function getProjectUpdates(start, end) {
@@ -83,26 +90,37 @@ function getProjectUpdates(start, end) {
             const stat = fs.statSync(fullPath);
 
             if (stat.isDirectory()) {
+                if (file === '_corrupted') {
+                    continue;
+                }
                 scan(fullPath);
             } else if (file === 'status.json') {
-                try {
-                    const project = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
-                    
-                    // Filter history
-                    const recentEvents = (project.history || []).filter(h => {
-                        return isWithinRange(h.date || h.timestamp, start, end); // Support both formats if they vary
-                    });
-
-                    if (recentEvents.length > 0 || project.currentStatus) {
-                        updates.push({
-                            name: project.project || path.basename(path.dirname(fullPath)),
-                            client: project.client || path.basename(path.dirname(path.dirname(fullPath))),
-                            status: project.currentStatus,
-                            events: recentEvents
-                        });
+                const result = safeReadJson(fullPath);
+                if (!result.ok) {
+                    const relativePath = path.relative(DATA_DIR, fullPath);
+                    if (result.error.type === 'parse') {
+                        quarantineCorruptedFile(fullPath, result.error.message);
+                        console.warn(`⚠️ [${relativePath}] JSON parse failed; quarantined to _corrupted.`);
+                    } else {
+                        console.error(`Error reading ${relativePath}: ${result.error.message}`);
                     }
-                } catch (e) {
-                    // Ignore corrupted files
+                    continue;
+                }
+
+                const project = result.json;
+                
+                // Filter history
+                const recentEvents = (project.history || []).filter(h => {
+                    return isWithinRange(h.date || h.timestamp, start, end); // Support both formats if they vary
+                });
+
+                if (recentEvents.length > 0 || project.currentStatus) {
+                    updates.push({
+                        name: project.project || path.basename(path.dirname(fullPath)),
+                        client: project.client || path.basename(path.dirname(path.dirname(fullPath))),
+                        status: project.currentStatus,
+                        events: recentEvents
+                    });
                 }
             }
         }
