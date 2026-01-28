@@ -10,7 +10,8 @@ F.R.E.Y.A. é um sistema de agentes de IA projetado para organizar seu trabalho,
 *   **Gestão de Tarefas:** Crie, liste e conclua tarefas ("Lembre-me de fazer X", "Minhas tarefas", "Terminei X").
 *   **Oráculo:** Pergunte sobre o status de qualquer projeto ("Como está o projeto X?").
 *   **Career Coach:** Gere "Brag Sheets" automáticas para suas avaliações de desempenho.
-*   **Relatórios Automatizados:** Gere resumos semanais ou dailies instantâneos.
+*   **Relatórios Automatizados:** Gere resumos semanais, dailies, relatório de Scrum Master e relatórios executivos.
+*   **Blockers & Riscos:** Gere um relatório rápido de blockers priorizados por severidade.
 *   **Saúde do Sistema:** Valide a integridade dos seus dados locais com um comando.
 *   **Git Automation:** Gere commits inteligentes automaticamente. A Freya analisa suas mudanças e escreve a mensagem para você.
 *   **Privacidade Total:** Seus dados (JSON e Markdown) ficam 100% locais na sua máquina.
@@ -27,9 +28,11 @@ Você pode pedir para a FREYA executar estas tarefas diretamente no chat, ou rod
 
 *   **Checar integridade:** "Verifique a saúde do sistema" (ou `npm run health`)
 *   **Migrar dados (se necessário):** `npm run migrate` (adiciona `schemaVersion` em logs antigos)
-*   **Relatório Profissional:** "Gere o status report" (ou `npm run status`)
-*   **Relatório semanal:** "Gere o relatório semanal" (ou `npm run report`)
-*   **Resumo daily:** "Gere o daily" (ou `npm run daily`)
+*   **Relatório Profissional (Executivo):** "Gere o status report" (ou `npm run status`)
+*   **Relatório Scrum Master (semanal):** `npm run sm-weekly`
+*   **Relatório de blockers:** `npm run blockers`
+*   **Relatório semanal (legado):** "Gere o relatório semanal" (ou `npm run report`)
+*   **Resumo daily (legado):** "Gere o daily" (ou `npm run daily`)
 
 ## 📘 Documentação Completa
 
