@@ -9,11 +9,15 @@ function usage() {
 freya - F.R.E.Y.A. CLI
 
 Usage:
-  freya init [dir] [--force]
+  freya init [dir] [--force] [--here|--in-place]
+
+Defaults:
+  - If no [dir] is provided, creates ./freya
 
 Examples:
-  freya init
-  freya init my-workspace
+  freya init              # creates ./freya
+  freya init my-workspace # creates ./my-workspace
+  freya init --here       # installs into current directory
   npx @cccarv82/freya init
 `;
 }
@@ -40,7 +44,11 @@ async function run(argv) {
   }
 
   if (command === 'init') {
-    const targetDir = args[1] ? path.resolve(process.cwd(), args[1]) : process.cwd();
+    const inPlace = flags.has('--here') || flags.has('--in-place');
+    const defaultDir = path.join(process.cwd(), 'freya');
+    const targetDir = args[1]
+      ? path.resolve(process.cwd(), args[1])
+      : (inPlace ? process.cwd() : defaultDir);
     const force = flags.has('--force');
     await cmdInit({ targetDir, force });
     return;
