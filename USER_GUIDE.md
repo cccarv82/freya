@@ -5,6 +5,30 @@ Este sistema foi projetado para ser seu assistente pessoal de produtividade, ope
 
 ## 🚀 Como Iniciar
 
+### 1) Criar uma workspace (CLI)
+Você pode inicializar uma workspace completa (agents + scripts + data) em qualquer diretório.
+
+**Via npx (recomendado):**
+```bash
+npx @cccarv82/freya init
+# cria ./freya
+```
+
+**Via instalação global:**
+```bash
+npm i -g @cccarv82/freya
+freya init
+# cria ./freya
+```
+
+**Modos do init:**
+```bash
+freya init              # cria ./freya
+freya init meu-projeto  # cria ./meu-projeto
+freya init --here       # instala no diretório atual
+```
+
+### 2) Interagir no chat da IDE
 Para interagir com a assistente, basta chamá-la no chat da sua IDE:
 
 > `@freya [sua mensagem]`
