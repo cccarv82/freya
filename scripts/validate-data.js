@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
+const { safeReadJson, quarantineCorruptedFile } = require('./lib/fs-utils');
+
 const DATA_DIR = path.join(__dirname, '../data');
 
 // --- Validation Helpers ---
@@ -84,6 +86,9 @@ function walk(dir, fileList = []) {
     const filePath = path.join(dir, file);
     const stat = fs.statSync(filePath);
     if (stat.isDirectory()) {
+      if (file === '_corrupted') {
+        return;
+      }
       walk(filePath, fileList);
     } else {
       if (path.extname(file) === '.json') {
@@ -109,23 +114,19 @@ function validateData() {
 
     files.forEach(file => {
         const relativePath = path.relative(DATA_DIR, file);
-        let content;
-        try {
-            content = fs.readFileSync(file, 'utf8');
-        } catch (readErr) {
-            console.error(`❌ [${relativePath}] Read failed: ${readErr.message}`);
+        const result = safeReadJson(file);
+        if (!result.ok) {
+            if (result.error.type === 'parse') {
+                quarantineCorruptedFile(file, result.error.message);
+                console.warn(`⚠️ [${relativePath}] JSON parse failed; quarantined to _corrupted.`);
+            } else {
+                console.error(`❌ [${relativePath}] Read failed: ${result.error.message}`);
+            }
             errorCount++;
             return;
         }
 
-        let json;
-        try {
-            json = JSON.parse(content);
-        } catch (parseErr) {
-            console.error(`❌ [${relativePath}] JSON parse failed: ${parseErr.message}`);
-            errorCount++;
-            return;
-        }
+        const json = result.json;
 
         let fileErrors = [];
 
