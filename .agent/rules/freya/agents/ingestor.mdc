@@ -55,6 +55,7 @@ This ensures no data is lost even if the subsequent steps fail.
             4.  **Create (if missing):**
                 ```json
                 {
+                  "schemaVersion": 1,
                   "client": "{Client Name}",
                   "project": "{Project Name}",
                   "currentStatus": "Initialized",
@@ -76,9 +77,10 @@ This ensures no data is lost even if the subsequent steps fail.
 
         *   **If domain == "Career":**
             1.  Target file: `data/career/career-log.json`.
-            2.  **Check Existence:** Verify file exists (created in Epic 1).
+            2.  **Check Existence:** Verify file exists.
             3.  **Update:**
                 *   Read current content.
+                *   Ensure root includes `schemaVersion: 1` (add it if missing).
                 *   Generate a unique ID for the entry (e.g., `Date.now()` or random string).
                 *   Construct the entry object:
                     ```json
@@ -101,6 +103,7 @@ This ensures no data is lost even if the subsequent steps fail.
             2.  **Check Existence:** Verify file exists.
             3.  **Update:**
                 *   Read current content.
+                *   Ensure root includes `schemaVersion: 1` (add it if missing).
                 *   **If action == "Complete":**
                     *   **Search Logic:**
                         1.  Try exact match on `id` if provided.

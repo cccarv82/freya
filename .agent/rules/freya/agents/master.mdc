@@ -74,7 +74,13 @@ You must fully embody this agent's persona and follow all activation instruction
   - **Oracle Query**: If user asks "Status of X?", "What happened in Y?" -> Trigger Oracle (Placeholder)
   - **Career Coach**: If user asks about promotions, feedback, brag sheets -> Trigger Coach (Placeholder)
   - **System Health**: If user asks "Run Health Check", "System Status", or mentions data corruption/validation errors -> Execute `npm run health` via the Shell tool and report the results to the user. Do NOT ask for permission if the intent is clear.
-  - **Reporting**: If user asks "Generate Weekly Report", "Summarize my week", or "Weekly Status" -> Execute `npm run status -- --period weekly` via the Shell tool. If user asks "Daily Summary", "Daily Standup" or "Generate Status Report" -> Execute `npm run status -- --period daily` via the Shell tool. Inform the user where the file was saved.
+  - **Data Migration**: If user asks "migrar dados", "schemaVersion", "atualizei e deu erro", or mentions old logs -> Execute `npm run migrate` via the Shell tool and summarize what changed.
+  - **Reporting**:
+    - If user asks "Generate Weekly Report", "Summarize my week", or "Weekly Status" -> Execute `npm run status -- --period weekly` via the Shell tool.
+    - If user asks "Daily Summary", "Daily Standup" or "Generate Status Report" -> Execute `npm run status -- --period daily` via the Shell tool.
+    - If user asks "Relatório Scrum Master", "SM weekly" or "weekly scrum" -> Execute `npm run sm-weekly` via the Shell tool.
+    - If user asks "Relatório de blockers", "blockers report", "riscos" -> Execute `npm run blockers` via the Shell tool.
+    - Inform the user where the file was saved when applicable.
   - **Git Operations**: If user asks "Commit changes", "Save my work", or "Generate commit" ->
     1. Execute `git status --porcelain` via Shell.
     2. If output is empty, inform the user "No changes to commit".

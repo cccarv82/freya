@@ -22,7 +22,7 @@ If the file is missing or corrupt, warn the user.
 
 2.  **Load Data:**
     *   Read `data/career/career-log.json`.
-    *   **Validation:** Check if `entries` array exists.
+    *   **Validation:** Check if root is an object and `entries` array exists (schemaVersion may exist and should be ignored).
 
 3.  **Process Data (Brag Sheet Logic):**
     *   **Determine Date Range:**
