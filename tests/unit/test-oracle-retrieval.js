@@ -6,6 +6,7 @@ const taskLogPath = path.join(__dirname, '../../data/tasks/task-log.json');
 
 // Mock data setup
 const mockData = {
+  schemaVersion: 1,
   tasks: [
     { id: "1", description: "Task 1", category: "DO_NOW", status: "PENDING", priority: "high" },
     { id: "2", description: "Task 2", category: "SCHEDULE", status: "PENDING", priority: "medium" },
@@ -37,7 +38,7 @@ try {
   console.log("✅ Oracle retrieval logic verification passed.");
 
   // Cleanup (Restore empty)
-  fs.writeFileSync(taskLogPath, JSON.stringify({ tasks: [] }, null, 2));
+  fs.writeFileSync(taskLogPath, JSON.stringify({ schemaVersion: 1, tasks: [] }, null, 2));
 
 } catch (error) {
   console.error("❌ Test Failed:", error.message);

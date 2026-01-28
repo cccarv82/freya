@@ -9,6 +9,7 @@ function daysAgo(n) {
 }
 
 const mockTaskLog = {
+    schemaVersion: 1,
     tasks: [
         { id: "1", description: "Fixed bug #123", status: "COMPLETED", completedAt: daysAgo(1) },
         { id: "2", description: "Updated docs", status: "COMPLETED", completedAt: daysAgo(5) }, // Too old
