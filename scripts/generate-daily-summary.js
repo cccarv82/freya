@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
+const { safeParseToMs } = require('./lib/date-utils');
+
 const TASK_LOG_PATH = path.join(__dirname, '../data/tasks/task-log.json');
 
 // --- Helper Logic ---
@@ -8,9 +10,9 @@ const now = new Date();
 const oneDay = 24 * 60 * 60 * 1000;
 
 function isRecentlyCompleted(dateStr) {
-    if (!dateStr) return false;
-    const date = new Date(dateStr);
-    const diff = now - date;
+    const ms = safeParseToMs(dateStr);
+    if (!Number.isFinite(ms)) return false;
+    const diff = now.getTime() - ms;
     // Consider "Yesterday" as anything completed in the last 24 hours for daily sync purposes
     return diff >= 0 && diff <= oneDay;
 }
