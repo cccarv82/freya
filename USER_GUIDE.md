@@ -78,10 +78,20 @@ Organize seu dia-a-dia com um sistema de tarefas integrado.
 ### 6. Relatórios Automatizados
 Transforme seus logs em relatórios úteis sem esforço. Peça à FREYA no chat e ela executará os scripts para você.
 
-*   **Relatório de Status Profissional (Novo):**
+*   **Relatório de Status Profissional (Executivo):**
     > "Gerar status report", "Relatório Executivo"
     *   *Resultado:* Gera um relatório Markdown completo com Resumo Executivo, Entregas, Status de Projetos e Bloqueios. Ideal para enviar stakeholders.
     *   *Manual:* `npm run status -- --period [daily|weekly]`
+
+*   **Relatório Scrum Master (Semanal):**
+    > "Gerar relatório SM" ou "Relatório Scrum Master"
+    *   *Resultado:* Gera um report semanal focado em resumo, wins, blockers/riscos e foco da próxima semana.
+    *   *Manual:* `npm run sm-weekly`
+
+*   **Relatório de Blockers (priorizado por severidade):**
+    > "Gerar relatório de blockers"
+    *   *Resultado:* Lista blockers abertos ordenados por severidade e idade, pra ficar fácil priorizar.
+    *   *Manual:* `npm run blockers`
 
 *   **Relatório Semanal (Legado):**
     > "Gerar relatório semanal"
