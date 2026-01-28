@@ -93,7 +93,15 @@ Transforme seus logs em relatórios úteis sem esforço. Peça à FREYA no chat 
     *   *Resultado:* A FREYA gera e exibe o texto "Ontem / Hoje / Bloqueios" diretamente no chat.
     *   *Manual:* `npm run daily`
 
-### 7. Saúde do Sistema
+### 7. Migração de Dados (schemaVersion)
+Se você atualizou a FREYA e tem logs antigos, rode a migração para padronizar os JSONs.
+
+*   **Migrar dados:**
+    > `npm run migrate`
+    *   *Resultado:* adiciona `schemaVersion` aos arquivos conhecidos (`task-log.json`, `career-log.json`, `blocker-log.json`).
+    *   *Segurança:* se algum JSON estiver corrompido, ele é movido para quarentena (não é perdido).
+
+### 8. Saúde do Sistema
 Garanta que seus dados locais estão íntegros.
 
 *   **Health Check:**
@@ -101,7 +109,7 @@ Garanta que seus dados locais estão íntegros.
     *   *Resultado:* A FREYA roda o diagnóstico e reporta se todos os JSONs estão válidos ou se há erros para corrigir.
     *   *Manual:* `npm run health`
 
-### 8. Git Automation
+### 9. Git Automation
 Deixe a Freya cuidar do versionamento básico do seu código.
 
 *   **Auto-Commit:**
@@ -109,7 +117,7 @@ Deixe a Freya cuidar do versionamento básico do seu código.
     *   *Resultado:* A Freya executa `git status`, analisa o `git diff` para entender o que mudou, gera uma mensagem de commit semântica e realiza o commit (`git add .` + `git commit`).
     *   *Nota:* Ela sempre pedirá confirmação ou avisará se não houver mudanças.
 
-### 9. Detecção Implícita de Tarefas
+### 10. Detecção Implícita de Tarefas
 A Freya agora entende suas intenções futuras sem precisar de comandos explícitos.
 
 *   **Detecção Inteligente:**
