@@ -68,7 +68,7 @@ function generate() {
 
   const reportDate = toIsoDate(now);
 
-  const taskLog = readJsonOrQuarantine(TASKS_FILE, { tasks: [] });
+  const taskLog = readJsonOrQuarantine(TASKS_FILE, { schemaVersion: 1, tasks: [] });
   const blockersLog = readJsonOrQuarantine(BLOCKERS_FILE, { schemaVersion: 1, blockers: [] });
 
   const tasks = taskLog.tasks || [];

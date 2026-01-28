@@ -46,7 +46,7 @@ function generateWeeklyReport() {
     const files = walk(DATA_DIR);
     
     const projects = [];
-    let taskLog = { tasks: [] };
+    let taskLog = { schemaVersion: 1, tasks: [] };
     let careerLog = { entries: [] };
 
     // 1. Collect Data
