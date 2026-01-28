@@ -1,5 +1,5 @@
 {
-  "name": "freya",
+  "name": "@cccarv82/freya",
   "version": "1.0.0",
   "description": "Personal AI Assistant with local-first persistence",
   "scripts": {
@@ -10,9 +10,18 @@
     "daily": "node scripts/generate-daily-summary.js",
     "status": "node scripts/generate-executive-report.js",
     "blockers": "node scripts/generate-blockers-report.js",
-    "test": "node tests/unit/test-package-config.js && node tests/unit/test-fs-utils.js && node tests/unit/test-task-schema.js && node tests/unit/test-daily-generation.js && node tests/unit/test-report-generation.js && node tests/unit/test-oracle-retrieval.js && node tests/unit/test-task-completion.js && node tests/unit/test-migrate-data.js && node tests/unit/test-blockers-validation.js && node tests/unit/test-blockers-report.js && node tests/unit/test-sm-weekly-report.js && node tests/integration/test-ingestor-task.js"
+    "test": "node tests/unit/test-package-config.js && node tests/unit/test-cli-init.js && node tests/unit/test-fs-utils.js && node tests/unit/test-task-schema.js && node tests/unit/test-daily-generation.js && node tests/unit/test-report-generation.js && node tests/unit/test-oracle-retrieval.js && node tests/unit/test-task-completion.js && node tests/unit/test-migrate-data.js && node tests/unit/test-blockers-validation.js && node tests/unit/test-blockers-report.js && node tests/unit/test-sm-weekly-report.js && node tests/integration/test-ingestor-task.js"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "bin": {
+    "freya": "bin/freya.js"
+  },
+  "files": [
+    "bin",
+    "cli",
+    "templates"
+  ],
+  "preferGlobal": true
 }
