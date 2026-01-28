@@ -9,6 +9,8 @@
 const fs = require('fs');
 const path = require('path');
 
+const { toIsoDate, isWithinRange } = require('./lib/date-utils');
+
 // --- Configuration ---
 const DATA_DIR = path.join(__dirname, '../data');
 const LOGS_DIR = path.join(__dirname, '../logs/daily');
@@ -25,18 +27,14 @@ function getDateRange(period) {
         // Last 7 days
         start.setDate(today.getDate() - 7);
     } else {
-        // Daily: Start of today (00:00) to End of today (23:59)
-        // Actually for "Daily status" we usually look at "Since yesterday" or "Today's achievements"
-        // Let's assume Daily = Today + Yesterday for context, or just Today?
-        // Let's stick to "Today" for completed things, but maybe "Pending" is timeless.
-        // For logic: Match items with timestamp >= Start of Today.
+        // Daily: Start of today (00:00 local time) to now.
         start.setHours(0, 0, 0, 0);
     }
     return { start, end };
 }
 
 function formatDate(date) {
-    return date.toISOString().split('T')[0];
+    return toIsoDate(date);
 }
 
 function ensureDir(dir) {
@@ -56,8 +54,7 @@ function getTasks(start, end) {
 
         const completed = tasks.filter(t => {
             if (t.status !== 'COMPLETED' || !t.completedAt) return false;
-            const date = new Date(t.completedAt);
-            return date >= start && date <= end;
+            return isWithinRange(t.completedAt, start, end);
         });
 
         const pending = tasks.filter(t => t.status === 'PENDING' && t.category === 'DO_NOW');
@@ -93,8 +90,7 @@ function getProjectUpdates(start, end) {
                     
                     // Filter history
                     const recentEvents = (project.history || []).filter(h => {
-                        const date = new Date(h.date || h.timestamp); // Support both formats if they vary
-                        return date >= start && date <= end;
+                        return isWithinRange(h.date || h.timestamp, start, end); // Support both formats if they vary
                     });
 
                     if (recentEvents.length > 0 || project.currentStatus) {
@@ -125,14 +121,14 @@ function getDailyLogs(start, end) {
     for (const file of files) {
         if (!file.endsWith('.md')) continue;
         const dateStr = file.replace('.md', '');
-        const date = new Date(dateStr);
-        // Fix timezone offset issue for simple date comparison if needed, 
-        // but simple string compare matches usually work for YYYY-MM-DD
-        if (date >= start && date <= end) {
-             try {
+        // The filenames are YYYY-MM-DD. Compare as ISO dates to avoid timezone parsing drift.
+        const startIso = formatDate(start);
+        const endIso = formatDate(end);
+        if (dateStr >= startIso && dateStr <= endIso) {
+            try {
                 const content = fs.readFileSync(path.join(LOGS_DIR, file), 'utf8');
                 relevantLogs.push({ date: dateStr, content });
-             } catch (e) {}
+            } catch (e) {}
         }
     }
     return relevantLogs;

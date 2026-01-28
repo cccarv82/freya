@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
+const { toIsoDate, isWithinRange } = require('./lib/date-utils');
+
 const DATA_DIR = path.join(__dirname, '../data');
 const REPORT_DIR = path.join(__dirname, '../docs/reports');
 
@@ -14,14 +16,12 @@ const now = new Date();
 const oneDay = 24 * 60 * 60 * 1000;
 
 function isWithinWeek(dateStr) {
-    if (!dateStr) return false;
-    const date = new Date(dateStr);
     const sevenDaysAgo = new Date(now.getTime() - (7 * oneDay));
-    return date >= sevenDaysAgo && date <= now;
+    return isWithinRange(dateStr, sevenDaysAgo, now);
 }
 
 function getFormattedDate() {
-    return now.toISOString().split('T')[0];
+    return toIsoDate(now);
 }
 
 // --- File Walking ---
