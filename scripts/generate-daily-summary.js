@@ -2,8 +2,10 @@ const fs = require('fs');
 const path = require('path');
 
 const { safeParseToMs } = require('./lib/date-utils');
+const { safeReadJson, quarantineCorruptedFile } = require('./lib/fs-utils');
 
 const TASK_LOG_PATH = path.join(__dirname, '../data/tasks/task-log.json');
+const BLOCKERS_LOG_PATH = path.join(__dirname, '../data/blockers/blocker-log.json');
 
 // --- Helper Logic ---
 const now = new Date();
@@ -54,8 +56,35 @@ function generateDailySummary() {
         }
         summary += "\n";
 
-        // 3. Bloqueios (Placeholder until Blockers are implemented)
-        summary += "**Bloqueios:** None";
+        // 3. Bloqueios (from blocker-log.json)
+        let blockersLine = "None";
+        if (fs.existsSync(BLOCKERS_LOG_PATH)) {
+            const res = safeReadJson(BLOCKERS_LOG_PATH);
+            if (!res.ok) {
+                if (res.error.type === 'parse') {
+                    quarantineCorruptedFile(BLOCKERS_LOG_PATH, res.error.message);
+                }
+            } else {
+                const blockers = (res.json.blockers || []).filter(b => {
+                    const st = (b.status || '').toUpperCase();
+                    return st === 'OPEN' || st === 'MITIGATING';
+                });
+                const sevOrder = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+                blockers.sort((a, b) => {
+                    const sa = sevOrder[(a.severity || '').toUpperCase()] ?? 99;
+                    const sb = sevOrder[(b.severity || '').toUpperCase()] ?? 99;
+                    if (sa !== sb) return sa - sb;
+                    const ta = safeParseToMs(a.createdAt) || 0;
+                    const tb = safeParseToMs(b.createdAt) || 0;
+                    return ta - tb; // older first
+                });
+                if (blockers.length > 0) {
+                    blockersLine = blockers.slice(0, 3).map(b => b.title || b.description || b.id).join(", ");
+                }
+            }
+        }
+
+        summary += `**Bloqueios:** ${blockersLine}`;
 
         console.log(summary);
 
