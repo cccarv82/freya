@@ -16,9 +16,33 @@ F.R.E.Y.A. é um sistema de agentes de IA projetado para organizar seu trabalho,
 *   **Git Automation:** Gere commits inteligentes automaticamente. A Freya analisa suas mudanças e escreve a mensagem para você.
 *   **Privacidade Total:** Seus dados (JSON e Markdown) ficam 100% locais na sua máquina.
 
+## 📦 Instalação (CLI)
+
+Você pode usar a FREYA como um CLI para **inicializar uma workspace** completa (agents + scripts + data) em qualquer diretório.
+
+### Via npx (recomendado)
+```bash
+npx @cccarv82/freya init
+# cria ./freya
+```
+
+### Via instalação global
+```bash
+npm i -g @cccarv82/freya
+freya init
+# cria ./freya
+```
+
+### Modos do `init`
+```bash
+freya init              # cria ./freya
+freya init meu-projeto  # cria ./meu-projeto
+freya init --here       # instala no diretório atual
+```
+
 ## 🚀 Como Usar
 
-1.  Abra esta pasta na **sua IDE**.
+1.  Abra a pasta da workspace gerada (ex.: `./freya`) na **sua IDE**.
 2.  No chat da IDE (ex: Ctrl+L / Cmd+L), digite:
     > `@freya Ajuda`
 3.  Siga as instruções da assistente.
