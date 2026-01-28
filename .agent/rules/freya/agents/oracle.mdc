@@ -35,6 +35,7 @@ Do not invent status updates.
 3.  **Read Data & Synthesize:**
     *   **Task Logic:**
         *   Read `task-log.json`.
+        *   Accept either format `{ tasks: [...] }` or `{ schemaVersion: 1, tasks: [...] }`.
         *   **Filter Logic:**
             *   "Fazer" / "Tasks" / "To-Do" -> `category == DO_NOW` AND `status == PENDING`.
             *   "Agenda" / "Schedule" -> `category == SCHEDULE` AND `status == PENDING`.
