@@ -228,6 +228,44 @@ function escapeJsonControlChars(jsonText) {
   return out.join('');
 }
 
+function scanSecrets(text) {
+  const t = String(text || '');
+  const findings = [];
+
+  const rules = [
+    { name: 'GitHub token (ghp_)', re: /ghp_[A-Za-z0-9]{20,}/g },
+    { name: 'GitHub fine-grained token (github_pat_)', re: /github_pat_[A-Za-z0-9_]{20,}/g },
+    { name: 'Slack token (xox*)', re: /xox[baprs]-[A-Za-z0-9-]{10,}/g },
+    { name: 'AWS Access Key (AKIA)', re: /AKIA[0-9A-Z]{16}/g },
+    { name: 'Private key block', re: /-----BEGIN [A-Z ]+PRIVATE KEY-----/g },
+    { name: 'Discord webhook URL', re: /https?:\/\/(?:canary\.)?discord(?:app)?\.com\/api\/webhooks\/\d+\/[^\s]+/g },
+  ];
+
+  for (const r of rules) {
+    const m = t.match(r.re);
+    if (m && m.length) findings.push({ rule: r.name, count: m.length });
+  }
+
+  // Basic heuristic: long high-entropy strings
+  const long = t.match(/[A-Za-z0-9+\/=]{60,}/g);
+  if (long && long.length) findings.push({ rule: 'High-entropy blob (heuristic)', count: long.length });
+
+  return findings;
+}
+
+function redactSecrets(text) {
+  let out = String(text || '');
+  const replacements = [
+    /ghp_[A-Za-z0-9]{20,}/g,
+    /github_pat_[A-Za-z0-9_]{20,}/g,
+    /xox[baprs]-[A-Za-z0-9-]{10,}/g,
+    /AKIA[0-9A-Z]{16}/g,
+    /-----BEGIN [A-Z ]+PRIVATE KEY-----[sS]*?-----END [A-Z ]+PRIVATE KEY-----/g,
+  ];
+  for (const re of replacements) out = out.replace(re, '[REDACTED]');
+  return out;
+}
+
 async function publishRobust(webhookUrl, text, opts = {}) {
   const u = new URL(webhookUrl);
   const isDiscord = u.hostname.includes('discord.com') || u.hostname.includes('discordapp.com');
@@ -1235,12 +1273,24 @@ async function cmdWeb({ port, dir, open, dev }) {
           const webhookUrl = payload.webhookUrl;
           const text = payload.text;
           const mode = payload.mode || 'chunks';
+          const allowSecrets = !!payload.allowSecrets;
           if (!webhookUrl) return safeJson(res, 400, { error: 'Missing webhookUrl' });
           if (!text) return safeJson(res, 400, { error: 'Missing text' });
 
+          const findings = scanSecrets(text);
+          if (findings.length && !allowSecrets) {
+            return safeJson(res, 400, {
+              error: 'Potential secrets detected. Refusing to publish.',
+              details: JSON.stringify(findings, null, 2),
+              hint: 'Remova/mascare tokens ou confirme a publicação mesmo assim.'
+            });
+          }
+
+          const safeText = findings.length ? redactSecrets(text) : text;
+
           try {
-            const result = await publishRobust(webhookUrl, text, { mode });
-            return safeJson(res, 200, result);
+            const result = await publishRobust(webhookUrl, safeText, { mode });
+            return safeJson(res, 200, { ...result, redacted: findings.length > 0, findings });
           } catch (e) {
             return safeJson(res, 400, { error: e.message || String(e) });
           }

@@ -437,13 +437,26 @@
       saveLocal();
       if (!state.lastText) throw new Error('Gere um relatório primeiro.');
 
+      // quick local warning (server also enforces)
+      const secretHints = [];
+      if (/ghp_[A-Za-z0-9]{20,}/.test(state.lastText)) secretHints.push('GitHub token');
+      if (/github_pat_[A-Za-z0-9_]{20,}/.test(state.lastText)) secretHints.push('GitHub fine-grained token');
+      if (/-----BEGIN [A-Z ]+PRIVATE KEY-----/.test(state.lastText)) secretHints.push('Private key');
+      if (/xox[baprs]-[A-Za-z0-9-]{10,}/.test(state.lastText)) secretHints.push('Slack token');
+      if (/AKIA[0-9A-Z]{16}/.test(state.lastText)) secretHints.push('AWS key');
+
+      const msg = secretHints.length
+        ? 'ATENÇÃO: possível segredo detectado (' + secretHints.join(', ') + ').\n\nPublicar mesmo assim? (o Freya vai mascarar automaticamente)'
+        : 'Publicar o relatório selecionado?';
+
+      const ok = confirm(msg);
       const ok = confirm('Publicar o relatório selecionado?');
       if (!ok) return;
 
       const webhookUrl = target === 'discord' ? $('discord').value.trim() : $('teams').value.trim();
       if (!webhookUrl) throw new Error('Configure o webhook antes.');
       setPill('run', 'publish…');
-      await api('/api/publish', { webhookUrl, text: state.lastText, mode: 'chunks' });
+      await api('/api/publish', { webhookUrl, text: state.lastText, mode: 'chunks', allowSecrets: true });
       setPill('ok', 'published');
     } catch (e) {
       setPill('err', 'publish failed');
