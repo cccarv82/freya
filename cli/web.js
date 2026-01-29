@@ -59,6 +59,36 @@ function newestFile(dir, prefix) {
   return files[0]?.p || null;
 }
 
+function listReports(workspaceDir) {
+  const dir = path.join(workspaceDir, 'docs', 'reports');
+  if (!exists(dir)) return [];
+
+  const files = fs.readdirSync(dir)
+    .filter((f) => f.endsWith('.md'))
+    .map((name) => {
+      const full = path.join(dir, name);
+      const st = fs.statSync(full);
+      return { name, full, mtimeMs: st.mtimeMs, size: st.size };
+    })
+    .sort((a, b) => b.mtimeMs - a.mtimeMs);
+
+  function kind(name) {
+    if (name.startsWith('executive-')) return 'executive';
+    if (name.startsWith('sm-weekly-')) return 'sm-weekly';
+    if (name.startsWith('blockers-')) return 'blockers';
+    if (name.startsWith('daily-')) return 'daily';
+    return 'other';
+  }
+
+  return files.map((f) => ({
+    kind: kind(f.name),
+    name: f.name,
+    relPath: path.relative(workspaceDir, f.full).replace(/\\/g, '/'),
+    mtimeMs: f.mtimeMs,
+    size: f.size
+  }));
+}
+
 function safeJson(res, code, obj) {
   const body = JSON.stringify(obj);
   res.writeHead(code, {
@@ -607,6 +637,31 @@ function html(defaultDir) {
 
     .sideBtn { width: 100%; margin-top: 8px; }
 
+    .rep {
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--paper2);
+      padding: 10px 12px;
+      cursor: pointer;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .rep:hover { border-color: var(--line2); box-shadow: 0 10px 22px rgba(16,24,40,.10); }
+
+    .md-h1{ font-size: 20px; margin: 10px 0 6px; }
+    .md-h2{ font-size: 16px; margin: 10px 0 6px; }
+    .md-h3{ font-size: 14px; margin: 10px 0 6px; }
+    .md-p{ margin: 6px 0; color: var(--muted); line-height: 1.5; }
+    .md-ul{ margin: 6px 0 6px 18px; color: var(--muted); }
+    .md-inline{ font-family: var(--mono); font-size: 12px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.55); }
+    [data-theme="dark"] .md-inline{ background: rgba(0,0,0,.18); }
+    .md-code{ background: rgba(0,0,0,.05); border: 1px solid var(--line); border-radius: 14px; padding: 12px; overflow:auto; }
+    [data-theme="dark"] .md-code{ background: rgba(0,0,0,.22); }
+    .md-sp{ height: 10px; }
+
     .k { display: inline-block; padding: 2px 6px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.65); font-family: var(--mono); font-size: 12px; color: var(--muted); }
     [data-theme="dark"] .k { background: rgba(0,0,0,.18); }
 
@@ -689,8 +744,6 @@ function html(defaultDir) {
 
                 <div style="height:12px"></div>
 
-                <div style="height:16px"></div>
-
                 <label>Discord webhook URL</label>
                 <input id="discord" placeholder="https://discord.com/api/webhooks/..." />
                 <div style="height:10px"></div>
@@ -701,23 +754,40 @@ function html(defaultDir) {
 
                 <div style="height:10px"></div>
                 <div class="stack">
-                  <button class="btn" onclick="publish('discord')">Publish last → Discord</button>
-                  <button class="btn" onclick="publish('teams')">Publish last → Teams</button>
+                  <button class="btn" onclick="publish('discord')">Publish selected → Discord</button>
+                  <button class="btn" onclick="publish('teams')">Publish selected → Teams</button>
                 </div>
+
+                <div style="height:14px"></div>
+
+                <div class="help"><b>Dica:</b> clique em um relatório em <i>Reports</i> para ver o preview e habilitar publish/copy.</div>
               </div>
             </div>
 
             <div class="panel">
               <div class="panelHead">
-                <b>Output</b>
+                <b>Reports</b>
+                <div class="stack">
+                  <button class="btn small" onclick="refreshReports()">Refresh</button>
+                </div>
+              </div>
+              <div class="panelBody">
+                <div id="reportsList" style="display:grid; gap:8px"></div>
+                <div class="help">Últimos relatórios em <code>docs/reports</code>. Clique para abrir preview.</div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panelHead">
+                <b>Preview</b>
                 <div class="stack">
                   <button class="btn small" onclick="copyOut()">Copy</button>
                   <button class="btn small" onclick="clearOut()">Clear</button>
                 </div>
               </div>
               <div class="panelBody">
-                <div class="log" id="out"></div>
-                <div class="help">Dica: quando um report gera arquivo, mostramos o conteúdo real do report aqui (melhor que stdout).</div>
+                <div id="reportPreview" class="log md" style="font-family: var(--sans);"></div>
+                <div class="help">O preview renderiza Markdown básico (headers, listas, code). O botão Copy copia o conteúdo completo.</div>
               </div>
             </div>
 
@@ -732,7 +802,7 @@ function html(defaultDir) {
 <script>
   window.__FREYA_DEFAULT_DIR = "${safeDefault}";
   const $ = (id) => document.getElementById(id);
-  const state = { lastReportPath: null, lastText: '' };
+  const state = { lastReportPath: null, lastText: '', reports: [] };
 
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
@@ -754,13 +824,89 @@ function html(defaultDir) {
     $('status') && ($('status').textContent = text);
   }
 
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function renderMarkdown(md) {
+    const lines = String(md || '').split(/\r?\n/);
+    let html = '';
+    let inCode = false;
+    let inList = false;
+
+    const BT = String.fromCharCode(96); // backtick
+    const FENCE = BT + BT + BT;
+    const inlineCodeRe = /\x60([^\x60]+)\x60/g;
+
+    const closeList = () => {
+      if (inList) { html += '</ul>'; inList = false; }
+    };
+
+    for (const line of lines) {
+      if (line.trim().startsWith(FENCE)) {
+        if (!inCode) {
+          closeList();
+          inCode = true;
+          html += '<pre class="md-code"><code>';
+        } else {
+          inCode = false;
+          html += '</code></pre>';
+        }
+        continue;
+      }
+
+      if (inCode) {
+        html += escapeHtml(line) + '\n';
+        continue;
+      }
+
+      const h = line.match(/^(#{1,3})\s+(.*)$/);
+      if (h) {
+        closeList();
+        const lvl = h[1].length;
+        html += '<h' + lvl + ' class="md-h' + lvl + '">' + escapeHtml(h[2]) + '</h' + lvl + '>';
+        continue;
+      }
+
+      const li = line.match(/^\s*[-*]\s+(.*)$/);
+      if (li) {
+        if (!inList) { html += '<ul class="md-ul">'; inList = true; }
+        const content = escapeHtml(li[1]).replace(inlineCodeRe, '<code class="md-inline">$1</code>');
+        html += '<li>' + content + '</li>';
+        continue;
+      }
+
+      if (line.trim() === '') {
+        closeList();
+        html += '<div class="md-sp"></div>';
+        continue;
+      }
+
+      closeList();
+      const p = escapeHtml(line).replace(inlineCodeRe, '<code class="md-inline">$1</code>');
+      html += '<p class="md-p">' + p + '</p>';
+    }
+
+    closeList();
+    if (inCode) html += '</code></pre>';
+    return html;
+  }
+
   function setOut(text) {
     state.lastText = text || '';
-    $('out').textContent = text || '';
+    const el = $('reportPreview');
+    if (el) el.innerHTML = renderMarkdown(state.lastText);
   }
 
   function clearOut() {
-    setOut('');
+    state.lastText = '';
+    const el = $('reportPreview');
+    if (el) el.innerHTML = '';
     setPill('ok', 'idle');
   }
 
@@ -810,6 +956,31 @@ function html(defaultDir) {
     return d || './freya';
   }
 
+  async function refreshReports() {
+    try {
+      const r = await api('/api/reports/list', { dir: dirOrDefault() });
+      state.reports = (r.reports || []).slice(0, 30);
+      const list = $('reportsList');
+      if (!list) return;
+      list.innerHTML = '';
+
+      for (const item of state.reports) {
+        const btn = document.createElement('button');
+        btn.className = 'rep';
+        btn.type = 'button';
+        btn.innerHTML = '<span style="font-weight:800">' + escapeHtml(item.kind) + '</span> <span style="opacity:.7">—</span> ' + escapeHtml(item.name);
+        btn.onclick = async () => {
+          const rr = await api('/api/reports/read', { dir: dirOrDefault(), relPath: item.relPath });
+          setLast(item.name);
+          setOut(rr.text || '');
+        };
+        list.appendChild(btn);
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+
   async function pickDir() {
     try {
       setPill('run','picker…');
@@ -835,6 +1006,7 @@ function html(defaultDir) {
       const r = await api('/api/init', { dir: dirOrDefault() });
       setOut(r.output);
       setLast(null);
+      await refreshReports();
       setPill('ok','init ok');
     } catch (e) {
       setPill('err','init failed');
@@ -851,6 +1023,7 @@ function html(defaultDir) {
       const r = await api('/api/update', { dir: dirOrDefault() });
       setOut(r.output);
       setLast(null);
+      await refreshReports();
       setPill('ok','update ok');
     } catch (e) {
       setPill('err','update failed');
@@ -900,6 +1073,7 @@ function html(defaultDir) {
       setOut(r.output);
       setLast(r.reportPath || null);
       if (r.reportText) state.lastText = r.reportText;
+      await refreshReports();
       setPill('ok', name + ' ok');
     } catch (e) {
       setPill('err', name + ' failed');
@@ -926,6 +1100,7 @@ function html(defaultDir) {
   applyTheme(localStorage.getItem('freya.theme') || 'light');
   $('chipPort').textContent = location.host;
   loadLocal();
+  refreshReports();
   setPill('ok','idle');
 </script>
 </body>
@@ -1125,6 +1300,20 @@ async function cmdWeb({ port, dir, open, dev }) {
         if (req.url === '/api/pick-dir') {
           const picked = await pickDirectoryNative();
           return safeJson(res, 200, { dir: picked });
+        }
+
+        if (req.url === '/api/reports/list') {
+          const reports = listReports(workspaceDir);
+          return safeJson(res, 200, { reports });
+        }
+
+        if (req.url === '/api/reports/read') {
+          const rel = payload.relPath;
+          if (!rel) return safeJson(res, 400, { error: 'Missing relPath' });
+          const full = path.join(workspaceDir, rel);
+          if (!exists(full)) return safeJson(res, 404, { error: 'Report not found' });
+          const text = fs.readFileSync(full, 'utf8');
+          return safeJson(res, 200, { relPath: rel, text });
         }
 
         if (req.url === '/api/init') {
