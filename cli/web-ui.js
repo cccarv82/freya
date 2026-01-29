@@ -347,7 +347,9 @@
       const pri = (t.priority || '').toUpperCase();
       row.innerHTML = '<div style="display:flex; justify-content:space-between; gap:10px; align-items:center">'
         + '<div style="min-width:0"><div style="font-weight:700">' + escapeHtml(t.description || '') + '</div>'
-        + '<div style="opacity:.7; font-size:11px; margin-top:4px">' + escapeHtml(String(t.category || '')) + (pri ? (' · ' + escapeHtml(pri)) : '') + '</div></div>'
+        + '<div style="opacity:.7; font-size:11px; margin-top:4px">' + escapeHtml(String(t.category || ''))
+        + (t.projectSlug ? (' · <span style="font-family:var(--mono); opacity:.9">[' + escapeHtml(String(t.projectSlug)) + ']</span>') : '')
+        + (pri ? (' · ' + escapeHtml(pri)) : '') + '</div></div>'
         + '<button class="btn small" type="button">Complete</button>'
         + '</div>';
       const btn = row.querySelector('button');
@@ -383,7 +385,9 @@
       const sev = String(b.severity || '').toUpperCase();
       row.innerHTML = '<div style="display:flex; justify-content:space-between; gap:10px; align-items:center">'
         + '<div style="min-width:0"><div style="font-weight:800">' + escapeHtml(sev) + '</div>'
-        + '<div style="margin-top:4px">' + escapeHtml(b.title || '') + '</div>'
+        + '<div style="margin-top:4px">' + escapeHtml(b.title || '')
+        + (b.projectSlug ? (' <span style="font-family:var(--mono); opacity:.8">[' + escapeHtml(String(b.projectSlug)) + ']</span>') : '')
+        + '</div>'
         + '</div>'
         + '<div style="opacity:.7; font-size:11px; white-space:nowrap">' + escapeHtml(fmtWhen(new Date(b.createdAt || Date.now()).getTime())) + '</div>'
         + '</div>';
