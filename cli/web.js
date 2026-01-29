@@ -266,6 +266,65 @@ function redactSecrets(text) {
   return out;
 }
 
+function debugLogPath(workspaceDir) {
+  const dir = path.join(workspaceDir, '.debuglogs');
+  try { fs.mkdirSync(dir, { recursive: true }); } catch {}
+  return path.join(dir, 'debug.jsonl');
+}
+
+function safeString(v, max = 2000) {
+  const t = String(v == null ? '' : v);
+  return t.length > max ? (t.slice(0, max) + '…') : t;
+}
+
+function summarizePayload(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  const keys = Object.keys(payload);
+  const summary = { keys };
+
+  if (typeof payload.text === 'string') {
+    const red = redactSecrets(payload.text);
+    summary.textLen = payload.text.length;
+    summary.textSha1 = sha1(red);
+  }
+
+  if (typeof payload.plan === 'string') {
+    summary.planLen = payload.plan.length;
+    summary.planSha1 = sha1(payload.plan);
+  }
+
+  if (typeof payload.webhookUrl === 'string') {
+    summary.webhookHost = (() => { try { return new URL(payload.webhookUrl).host; } catch { return null; } })();
+  }
+
+  if (typeof payload.relPath === 'string') summary.relPath = payload.relPath;
+  if (typeof payload.script === 'string') summary.script = payload.script;
+
+  return summary;
+}
+
+function rotateDebugLog(filePath, maxBytes = 5 * 1024 * 1024) {
+  try {
+    if (!fs.existsSync(filePath)) return;
+    const st = fs.statSync(filePath);
+    if (st.size <= maxBytes) return;
+    const dir = path.dirname(filePath);
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const rotated = path.join(dir, 'debug-' + stamp + '.jsonl');
+    fs.renameSync(filePath, rotated);
+  } catch {}
+}
+
+function writeDebugEvent(workspaceDir, event) {
+  try {
+    if (!workspaceDir) return;
+    const filePath = debugLogPath(workspaceDir);
+    rotateDebugLog(filePath);
+    const line = JSON.stringify({ ts: new Date().toISOString(), ...event });
+    fs.appendFileSync(filePath, line + '\n', 'utf8');
+  } catch {}
+}
+
 async function publishRobust(webhookUrl, text, opts = {}) {
   const u = new URL(webhookUrl);
   const isDiscord = u.hostname.includes('discord.com') || u.hostname.includes('discordapp.com');
@@ -282,6 +341,25 @@ async function publishRobust(webhookUrl, text, opts = {}) {
 
 function safeJson(res, code, obj) {
   const body = JSON.stringify(obj);
+
+  try {
+    const dbg = res && res.__freyaDebug;
+    if (dbg && dbg.workspaceDir) {
+      const error = obj && (obj.error || obj.details)
+        ? safeString(redactSecrets(JSON.stringify({ error: obj.error, details: obj.details })), 1600)
+        : null;
+      writeDebugEvent(dbg.workspaceDir, {
+        type: 'http_response',
+        reqId: dbg.reqId,
+        method: dbg.method,
+        url: dbg.url,
+        status: code,
+        bytes: Buffer.byteLength(body),
+        error
+      });
+    }
+  } catch {}
+
   res.writeHead(code, {
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'no-store',
@@ -766,10 +844,13 @@ async function cmdWeb({ port, dir, open, dev }) {
   const host = '127.0.0.1';
 
   const server = http.createServer(async (req, res) => {
+    const reqId = Math.random().toString(16).slice(2) + Date.now().toString(16);
+    res.__freyaDebug = { reqId, method: req.method, url: req.url || '' };
     try {
       if (!req.url) return safeJson(res, 404, { error: 'Not found' });
 
       if (req.method === 'GET' && req.url === '/') {
+        try { res.__freyaDebug.workspaceDir = normalizeWorkspaceDir(dir || './freya'); } catch {}
         const body = html(dir || './freya');
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
         res.end(body);
@@ -796,6 +877,18 @@ async function cmdWeb({ port, dir, open, dev }) {
 
         const requestedDir = payload.dir || dir || './freya';
         const workspaceDir = normalizeWorkspaceDir(requestedDir);
+
+        // debug logging (always on)
+        try {
+          res.__freyaDebug.workspaceDir = workspaceDir;
+          writeDebugEvent(workspaceDir, {
+            type: 'http_request',
+            reqId,
+            method: req.method,
+            url: req.url,
+            payload: summarizePayload(payload)
+          });
+        } catch {}
 
         if (req.url === '/api/pick-dir') {
           const picked = await pickDirectoryNative();
