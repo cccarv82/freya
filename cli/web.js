@@ -917,7 +917,11 @@ async function cmdWeb({ port, dir, open, dev }) {
           try {
             plan = JSON.parse(jsonText);
           } catch (e) {
-            return safeJson(res, 400, { error: 'Plan is not valid JSON', details: e.message || String(e) });
+            return safeJson(res, 400, {
+              error: 'Plan is not valid JSON',
+              details: (e && e.message) ? e.message : String(e),
+              hint: 'O planner precisa retornar APENAS JSON. Se vier com texto extra, revise o prompt ou use apenas o bloco JSON.'
+            });
           }
 
           const actions = Array.isArray(plan.actions) ? plan.actions : [];

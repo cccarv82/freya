@@ -205,7 +205,10 @@
       body: body ? JSON.stringify(body) : undefined
     });
     const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Request failed');
+    if (!res.ok) {
+      const detail = json.details ? ('\n' + json.details) : '';
+      throw new Error((json.error || 'Request failed') + detail);
+    }
     return json;
   }
 
@@ -505,6 +508,7 @@
     try {
       if (!state.lastPlan) {
         setPill('err', 'no plan');
+        setOut('## Apply failed\n\nNo plan available. Run **Save + Process (Agents)** first.');
         return;
       }
       setPill('run', 'applying…');
@@ -522,6 +526,8 @@
       setPill('ok', 'applied');
       setTimeout(() => setPill('ok', 'idle'), 800);
     } catch (e) {
+      const msg = (e && e.message) ? e.message : String(e);
+      setOut('## Apply failed\n\n' + msg);
       setPill('err', 'apply failed');
     }
   }
