@@ -578,9 +578,7 @@
     try {
       setPill('run', 'exporting…');
       const r = await api('/api/obsidian/export', { dir: dirOrDefault() });
-      setOut('## Obsidian export
-
-' + (r.output || 'ok'));
+      setOut('## Obsidian export\n\n' + (r.output || 'ok'));
       setPill('ok', 'exported');
       setTimeout(() => setPill('ok', 'idle'), 800);
     } catch (e) {
