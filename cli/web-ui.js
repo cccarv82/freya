@@ -107,7 +107,14 @@
   function setOut(text) {
     state.lastText = text || '';
     const el = $('reportPreview');
-    if (el) el.innerHTML = renderMarkdown(state.lastText);
+    if (!el) return;
+    try {
+      el.innerHTML = renderMarkdown(state.lastText);
+    } catch (e) {
+      // Fallback: never hide the error/output if markdown rendering breaks
+      try { console.error('renderMarkdown failed:', e); } catch {}
+      el.textContent = state.lastText;
+    }
   }
 
   function clearOut() {
