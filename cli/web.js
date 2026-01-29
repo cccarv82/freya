@@ -299,8 +299,9 @@ function buildHtml(safeDefault) {
             <div class="stack">
               <button class="btn sideBtn" onclick="saveInbox()">Save to Daily Log</button>
               <button class="btn primary sideBtn" onclick="saveAndPlan()">Save + Process (Agents)</button>
+              <button class="btn sideBtn" onclick="runSuggestedReports()">Run suggested reports</button>
             </div>
-            <div class="help">Save: só registra. Save+Process: registra e roda um planner (Copilot CLI) pra sugerir ações estruturadas.</div>
+            <div class="help">Save+Process gera um plano (draft). Apply plan cria tasks/blockers. Run suggested reports executa os reports recomendados (daily/status/sm-weekly/blockers).</div>
           </div>
         </aside>
 
