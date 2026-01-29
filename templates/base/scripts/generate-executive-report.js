@@ -218,7 +218,7 @@ function generateReport(period) {
 
     // Save
     ensureDir(OUTPUT_DIR);
-    const filename = `report-${period}-${dateStr}.md`;
+    const filename = `executive-${period}-${dateStr}.md`;
     const outputPath = path.join(OUTPUT_DIR, filename);
     fs.writeFileSync(outputPath, md, 'utf8');
 
