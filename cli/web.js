@@ -422,7 +422,13 @@ function buildHtml(safeDefault) {
               <button class="btn primary sideBtn" onclick="saveAndPlan()">Save + Process (Agents)</button>
               <button class="btn sideBtn" onclick="runSuggestedReports()">Run suggested reports</button>
             </div>
-            <div class="help">Save+Process gera um plano (draft). Apply plan cria tasks/blockers. Run suggested reports executa os reports recomendados (daily/status/sm-weekly/blockers).</div>
+
+            <div style="height:10px"></div>
+            <label style="display:flex; align-items:center; gap:10px; user-select:none">
+              <input id="autoApply" type="checkbox" checked style="width:auto" onchange="toggleAutoApply()" />
+              Auto-apply plan
+            </label>
+            <div class="help">Quando ligado, o Save+Process já aplica tasks/blockers automaticamente.</div>
           </div>
         </aside>
 
