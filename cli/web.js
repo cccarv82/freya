@@ -3,6 +3,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { spawn } = require('child_process');
 
 function guessNpmCmd() {
@@ -842,9 +843,39 @@ async function cmdWeb({ port, dir, open, dev }) {
           if (!Array.isArray(blockerLog.blockers)) blockerLog.blockers = [];
           if (typeof blockerLog.schemaVersion !== 'number') blockerLog.schemaVersion = 1;
 
+          function normalizeTextForKey(t) {
+            return String(t || '').toLowerCase().replace(/s+/g, ' ').trim();
+          }
+
+          function sha1(text) {
+            return crypto.createHash('sha1').update(String(text || ''), 'utf8').digest('hex');
+          }
+
+          function within24h(iso) {
+            try {
+              const ms = Date.parse(iso);
+              if (!Number.isFinite(ms)) return false;
+              return (Date.now() - ms) <= 24 * 60 * 60 * 1000;
+            } catch {
+              return false;
+            }
+          }
+
+          const existingTaskKeys24h = new Set(
+            taskLog.tasks
+              .filter((t) => t && within24h(t.createdAt))
+              .map((t) => sha1(normalizeTextForKey(t.description)))
+          );
+
+          const existingBlockerKeys24h = new Set(
+            blockerLog.blockers
+              .filter((b) => b && within24h(b.createdAt))
+              .map((b) => sha1(normalizeTextForKey(b.title)))
+          );
+
           const now = new Date().toISOString();
           const applyMode = String(payload.mode || 'all').trim();
-          const applied = { tasks: 0, blockers: 0, reportsSuggested: [], oracleQueries: [], mode: applyMode };
+          undefined
 
           function makeId(prefix) {
             const rand = Math.random().toString(16).slice(2, 8);
@@ -879,6 +910,8 @@ async function cmdWeb({ port, dir, open, dev }) {
               if (applyMode !== 'all' && applyMode !== 'tasks') continue;
               const description = String(a.description || '').trim();
               if (!description) continue;
+              const key = sha1(normalizeTextForKey(description));
+              if (existingTaskKeys24h.has(key)) { applied.tasksSkipped++; continue; }
               const category = validTaskCats.has(String(a.category || '').trim()) ? String(a.category).trim() : 'DO_NOW';
               const priority = normPriority(a.priority);
               const task = {
@@ -897,6 +930,8 @@ async function cmdWeb({ port, dir, open, dev }) {
             if (type === 'create_blocker') {
               if (applyMode !== 'all' && applyMode !== 'blockers') continue;
               const title = String(a.title || '').trim();
+              const key = sha1(normalizeTextForKey(title));
+              if (existingBlockerKeys24h.has(key)) { applied.blockersSkipped++; continue; }
               const notes = String(a.notes || '').trim();
               if (!title) continue;
               const severity = normSeverity(a.severity);
