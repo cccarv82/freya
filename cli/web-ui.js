@@ -313,6 +313,8 @@
       setOut(r.output);
       setLast(null);
       await refreshReports();
+      // Auto health after init
+      try { await doHealth(); } catch {}
       setPill('ok', 'init ok');
     } catch (e) {
       setPill('err', 'init failed');
@@ -330,6 +332,8 @@
       setOut(r.output);
       setLast(null);
       await refreshReports();
+      // Auto health after update
+      try { await doHealth(); } catch {}
       setPill('ok', 'update ok');
     } catch (e) {
       setPill('err', 'update failed');
@@ -537,21 +541,35 @@
   $('chipPort').textContent = location.host;
   loadLocal();
 
-  // Load persisted settings from the workspace
+  // Load persisted settings from the workspace + bootstrap (auto-init + auto-health)
   (async () => {
+    let defaults = null;
     try {
-      const r = await api('/api/defaults', { dir: dirOrDefault() });
-      if (r && r.workspaceDir) {
-        $('dir').value = r.workspaceDir;
-        $('sidePath').textContent = r.workspaceDir;
+      defaults = await api('/api/defaults', { dir: dirOrDefault() });
+      if (defaults && defaults.workspaceDir) {
+        $('dir').value = defaults.workspaceDir;
+        $('sidePath').textContent = defaults.workspaceDir;
       }
-      if (r && r.settings) {
-        $('discord').value = r.settings.discordWebhookUrl || '';
-        $('teams').value = r.settings.teamsWebhookUrl || '';
+      if (defaults && defaults.settings) {
+        $('discord').value = defaults.settings.discordWebhookUrl || '';
+        $('teams').value = defaults.settings.teamsWebhookUrl || '';
       }
     } catch (e) {
       // ignore
     }
+
+    // If workspace isn't initialized yet, auto-init (reduces clicks)
+    try {
+      if (defaults && defaults.workspaceOk === false) {
+        setPill('run', 'auto-init…');
+        await doInit();
+        // After init, run health automatically
+        await doHealth();
+      }
+    } catch (e) {
+      // doInit/doHealth already surfaced errors
+    }
+
     refreshReports();
   })();
 

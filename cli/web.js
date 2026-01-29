@@ -710,7 +710,8 @@ async function cmdWeb({ port, dir, open, dev }) {
         if (req.url === '/api/defaults') {
           const settings = readSettings(workspaceDir);
           const reports = listReports(workspaceDir).slice(0, 20);
-          return safeJson(res, 200, { workspaceDir, settings, reports });
+          const workspaceOk = looksLikeFreyaWorkspace(workspaceDir);
+          return safeJson(res, 200, { workspaceDir, workspaceOk, settings, reports });
         }
 
         if (req.url === '/api/settings/save') {
