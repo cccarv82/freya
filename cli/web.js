@@ -908,7 +908,7 @@ async function cmdWeb({ port, dir, open, dev }) {
             const type = String(a.type || '').trim();
 
             if (type === 'create_task') {
-              const description = String(a.description || '').trim();
+              const description = normalizeWhitespace(a.description);
               const category = String(a.category || '').trim();
               const priorityRaw = String(a.priority || '').trim().toLowerCase();
               const priority = (priorityRaw === 'high' || priorityRaw === 'medium' || priorityRaw === 'low') ? priorityRaw : undefined;
@@ -918,8 +918,8 @@ async function cmdWeb({ port, dir, open, dev }) {
             }
 
             if (type === 'create_blocker') {
-              const title = String(a.title || '').trim();
-              const notes = String(a.notes || '').trim();
+              const title = normalizeWhitespace(a.title);
+              const notes = normalizeWhitespace(a.notes);
               let severity = String(a.severity || '').trim().toUpperCase();
               if (!validSev.has(severity)) {
                 if (severity.includes('CRIT')) severity = 'CRITICAL';
@@ -1014,8 +1014,12 @@ async function cmdWeb({ port, dir, open, dev }) {
           if (!Array.isArray(blockerLog.blockers)) blockerLog.blockers = [];
           if (typeof blockerLog.schemaVersion !== 'number') blockerLog.schemaVersion = 1;
 
+          function normalizeWhitespace(t) {
+            return String(t || '').replace(/\s+/g, ' ').trim();
+          }
+
           function normalizeTextForKey(t) {
-            return String(t || '').toLowerCase().replace(/\s+/g, ' ').trim();
+            return normalizeWhitespace(t).toLowerCase();
           }
 
           function sha1(text) {
@@ -1079,7 +1083,7 @@ async function cmdWeb({ port, dir, open, dev }) {
 
             if (type === 'create_task') {
               if (applyMode !== 'all' && applyMode !== 'tasks') continue;
-              const description = String(a.description || '').trim();
+              const description = normalizeWhitespace(a.description);
               if (!description) continue;
               const key = sha1(normalizeTextForKey(description));
               if (existingTaskKeys24h.has(key)) { applied.tasksSkipped++; continue; }
@@ -1100,10 +1104,10 @@ async function cmdWeb({ port, dir, open, dev }) {
 
             if (type === 'create_blocker') {
               if (applyMode !== 'all' && applyMode !== 'blockers') continue;
-              const title = String(a.title || '').trim();
+              const title = normalizeWhitespace(a.title);
               const key = sha1(normalizeTextForKey(title));
               if (existingBlockerKeys24h.has(key)) { applied.blockersSkipped++; continue; }
-              const notes = String(a.notes || '').trim();
+              const notes = normalizeWhitespace(a.notes);
               if (!title) continue;
               const severity = normSeverity(a.severity);
               const blocker = {
