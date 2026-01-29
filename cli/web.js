@@ -681,6 +681,7 @@ function html(defaultDir) {
       color: var(--muted);
     }
     .rep:hover { border-color: var(--line2); box-shadow: 0 10px 22px rgba(16,24,40,.10); }
+    .repActive { border-color: rgba(59,130,246,.55); box-shadow: 0 0 0 4px rgba(59,130,246,.12); }
 
     .md-h1{ font-size: 20px; margin: 10px 0 6px; }
     .md-h2{ font-size: 16px; margin: 10px 0 6px; }
@@ -804,6 +805,7 @@ function html(defaultDir) {
                 </div>
               </div>
               <div class="panelBody">
+                <input id="reportsFilter" placeholder="filter (ex: daily, executive, 2026-01-29)" style="width:100%; margin-bottom:10px" oninput="renderReportsList()" />
                 <div id="reportsList" style="display:grid; gap:8px"></div>
                 <div class="help">Últimos relatórios em <code>docs/reports</code>. Clique para abrir preview.</div>
               </div>
@@ -834,7 +836,7 @@ function html(defaultDir) {
 <script>
   window.__FREYA_DEFAULT_DIR = "${safeDefault}";
   const $ = (id) => document.getElementById(id);
-  const state = { lastReportPath: null, lastText: '', reports: [] };
+  const state = { lastReportPath: null, lastText: '', reports: [], selectedReport: null };
 
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
@@ -984,25 +986,72 @@ function html(defaultDir) {
     return d || './freya';
   }
 
+  function fmtWhen(ms) {
+    try {
+      const d = new Date(ms);
+      const yy = String(d.getFullYear());
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mi = String(d.getMinutes()).padStart(2, '0');
+      return yy + '-' + mm + '-' + dd + ' ' + hh + ':' + mi;
+    } catch {
+      return '';
+    }
+  }
+
+  async function selectReport(item) {
+    const rr = await api('/api/reports/read', { dir: dirOrDefault(), relPath: item.relPath });
+    state.selectedReport = item;
+    setLast(item.name);
+    setOut(rr.text || '');
+    renderReportsList();
+  }
+
+  function renderReportsList() {
+    const list = $('reportsList');
+    if (!list) return;
+    const q = ($('reportsFilter') ? $('reportsFilter').value : '').trim().toLowerCase();
+    const filtered = (state.reports || []).filter((it) => {
+      if (!q) return true;
+      return (it.name + ' ' + it.kind).toLowerCase().includes(q);
+    });
+
+    list.innerHTML = '';
+    for (const item of filtered) {
+      const btn = document.createElement('button');
+      btn.className = 'rep' + (state.selectedReport && state.selectedReport.relPath === item.relPath ? ' repActive' : '');
+      btn.type = 'button';
+      const meta = fmtWhen(item.mtimeMs);
+      btn.innerHTML =
+        '<div style="display:flex; gap:10px; align-items:center; justify-content:space-between">'
+        + '<div style="min-width:0">'
+        + '<div><span style="font-weight:800">' + escapeHtml(item.kind) + '</span> <span style="opacity:.7">—</span> ' + escapeHtml(item.name) + '</div>'
+        + '<div style="opacity:.65; font-size:11px; margin-top:4px">' + escapeHtml(item.relPath) + '</div>'
+        + '</div>'
+        + '<div style="opacity:.7; font-size:11px; white-space:nowrap">' + escapeHtml(meta) + '</div>'
+        + '</div>';
+
+      btn.onclick = async () => {
+        try {
+          await selectReport(item);
+        } catch (e) {
+          setPill('err', 'open failed');
+        }
+      };
+      list.appendChild(btn);
+    }
+  }
+
   async function refreshReports() {
     try {
       const r = await api('/api/reports/list', { dir: dirOrDefault() });
-      state.reports = (r.reports || []).slice(0, 30);
-      const list = $('reportsList');
-      if (!list) return;
-      list.innerHTML = '';
+      state.reports = (r.reports || []).slice(0, 50);
+      renderReportsList();
 
-      for (const item of state.reports) {
-        const btn = document.createElement('button');
-        btn.className = 'rep';
-        btn.type = 'button';
-        btn.innerHTML = '<span style="font-weight:800">' + escapeHtml(item.kind) + '</span> <span style="opacity:.7">—</span> ' + escapeHtml(item.name);
-        btn.onclick = async () => {
-          const rr = await api('/api/reports/read', { dir: dirOrDefault(), relPath: item.relPath });
-          setLast(item.name);
-          setOut(rr.text || '');
-        };
-        list.appendChild(btn);
+      // Auto-select latest if nothing selected yet
+      if (!state.selectedReport && state.reports && state.reports[0]) {
+        await selectReport(state.reports[0]);
       }
     } catch (e) {
       // ignore
