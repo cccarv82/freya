@@ -868,7 +868,7 @@ function html(defaultDir) {
   }
 
   function renderMarkdown(md) {
-    const lines = String(md || '').split(/\r?\n/);
+    const lines = String(md || '').split(/\\r?\\n/);
     let html = '';
     let inCode = false;
     let inList = false;
