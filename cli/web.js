@@ -249,989 +249,159 @@ async function pickDirectoryNative() {
 function html(defaultDir) {
   // Aesthetic: “clean workstation” — light-first UI inspired by modern productivity apps.
   const safeDefault = String(defaultDir || './freya').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return buildHtml(safeDefault);
+}
+
+function buildHtml(safeDefault) {
   return `<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>FREYA Web</title>
-  <style>
-    /*
-      Design goals:
-      - Light theme by default (inspired by your reference screenshots)
-      - Dark mode toggle
-      - App-like layout: sidebar + main surface
-      - Clear onboarding and affordances
-    */
-
-    :root {
-      --radius: 14px;
-      --shadow: 0 18px 55px rgba(16, 24, 40, .10);
-      --shadow2: 0 10px 20px rgba(16, 24, 40, .08);
-      --ring: 0 0 0 4px rgba(59, 130, 246, .18);
-
-      /* Light */
-      --bg: #f6f7fb;
-      --paper: #ffffff;
-      --paper2: #fbfbfd;
-      --line: rgba(16, 24, 40, .10);
-      --line2: rgba(16, 24, 40, .14);
-      --text: #0f172a;
-      --muted: rgba(15, 23, 42, .68);
-      --faint: rgba(15, 23, 42, .50);
-
-      --primary: #2563eb;
-      --primary2: #0ea5e9;
-      --accent: #f97316;
-      --ok: #16a34a;
-      --warn: #f59e0b;
-      --danger: #e11d48;
-
-      --chip: rgba(37, 99, 235, .08);
-      --chip2: rgba(249, 115, 22, .10);
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-      --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
-    }
-
-    [data-theme="dark"] {
-      --bg: #0b1020;
-      --paper: rgba(255,255,255,.06);
-      --paper2: rgba(255,255,255,.04);
-      --line: rgba(255,255,255,.12);
-      --line2: rgba(255,255,255,.18);
-      --text: #e9f0ff;
-      --muted: rgba(233,240,255,.72);
-      --faint: rgba(233,240,255,.54);
-
-      --primary: #60a5fa;
-      --primary2: #22c55e;
-      --accent: #fb923c;
-      --chip: rgba(96, 165, 250, .14);
-      --chip2: rgba(251, 146, 60, .14);
-
-      --shadow: 0 30px 70px rgba(0,0,0,.55);
-      --shadow2: 0 18px 40px rgba(0,0,0,.35);
-      --ring: 0 0 0 4px rgba(96, 165, 250, .22);
-    }
-
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
-    body {
-      margin: 0;
-      background:
-        radial-gradient(1200px 800px at 20% -10%, rgba(37,99,235,.12), transparent 55%),
-        radial-gradient(900px 600px at 92% 10%, rgba(249,115,22,.12), transparent 55%),
-        radial-gradient(1100px 700px at 70% 105%, rgba(14,165,233,.10), transparent 55%),
-        var(--bg);
-      color: var(--text);
-      font-family: var(--sans);
-    }
-
-    /* subtle grain */
-    body:before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      background-image:
-        radial-gradient(circle at 15% 20%, rgba(255,255,255,.38), transparent 32%),
-        radial-gradient(circle at 80% 10%, rgba(255,255,255,.26), transparent 38%),
-        linear-gradient(transparent 0, transparent 3px, rgba(0,0,0,.02) 4px);
-      background-size: 900px 900px, 900px 900px, 100% 7px;
-      opacity: .08;
-      mix-blend-mode: overlay;
-    }
-
-    .app {
-      max-width: 1260px;
-      margin: 18px auto;
-      padding: 0 18px;
-    }
-
-    .frame {
-      display: grid;
-      grid-template-columns: 280px 1fr;
-      gap: 14px;
-      min-height: calc(100vh - 36px);
-    }
-
-    @media (max-width: 980px) {
-      .frame { grid-template-columns: 1fr; }
-    }
-
-    .sidebar {
-      background: var(--paper);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow2);
-      padding: 14px;
-      position: sticky;
-      top: 18px;
-      height: fit-content;
-    }
-
-    .main {
-      background: var(--paper);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      overflow: hidden;
-    }
-
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 14px 16px;
-      border-bottom: 1px solid var(--line);
-      background: linear-gradient(180deg, var(--paper2), var(--paper));
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-weight: 800;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .spark {
-      width: 10px;
-      height: 10px;
-      border-radius: 4px;
-      background: linear-gradient(135deg, var(--accent), var(--primary));
-      box-shadow: 0 0 0 6px rgba(249,115,22,.12);
-    }
-
-    .actions {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .chip {
-      font-family: var(--mono);
-      font-size: 12px;
-      padding: 7px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--line);
-      background: rgba(255,255,255,.55);
-      color: var(--faint);
-    }
-
-    [data-theme="dark"] .chip { background: rgba(0,0,0,.20); }
-
-    .toggle {
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      background: var(--paper2);
-      padding: 7px 10px;
-      cursor: pointer;
-      color: var(--muted);
-      font-weight: 700;
-      font-size: 12px;
-    }
-
-    .section {
-      padding: 16px;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: 22px;
-      letter-spacing: -.02em;
-    }
-
-    .subtitle {
-      margin-top: 6px;
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.4;
-      max-width: 860px;
-    }
-
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin-top: 14px;
-    }
-
-    @media (max-width: 1100px) { .cards { grid-template-columns: repeat(2, 1fr);} }
-    @media (max-width: 620px) { .cards { grid-template-columns: 1fr;} }
-
-    .card {
-      border: 1px solid var(--line);
-      background: var(--paper2);
-      border-radius: 14px;
-      padding: 12px;
-      display: grid;
-      gap: 6px;
-      cursor: pointer;
-      transition: transform .10s ease, border-color .16s ease, box-shadow .16s ease;
-      box-shadow: 0 1px 0 rgba(16,24,40,.04);
-    }
-
-    .card:hover {
-      transform: translateY(-1px);
-      border-color: var(--line2);
-      box-shadow: 0 10px 22px rgba(16,24,40,.10);
-    }
-
-    .icon {
-      width: 34px;
-      height: 34px;
-      border-radius: 12px;
-      display: grid;
-      place-items: center;
-      background: var(--chip);
-      border: 1px solid var(--line);
-      color: var(--primary);
-      font-weight: 900;
-    }
-
-    .icon.orange { background: var(--chip2); color: var(--accent); }
-
-    .title {
-      font-weight: 800;
-      font-size: 13px;
-    }
-
-    .desc {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.35;
-    }
-
-    .grid2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-      margin-top: 14px;
-    }
-
-    @media (max-width: 980px) { .grid2 { grid-template-columns: 1fr; } }
-
-    .panel {
-      border: 1px solid var(--line);
-      background: var(--paper);
-      border-radius: 14px;
-      overflow: hidden;
-    }
-
-    .panelHead {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 12px;
-      border-bottom: 1px solid var(--line);
-      background: linear-gradient(180deg, var(--paper2), var(--paper));
-    }
-
-    .panelHead b { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-
-    .panelBody { padding: 12px; }
-
-    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-
-    input {
-      width: 100%;
-      padding: 11px 12px;
-      border-radius: 12px;
-      border: 1px solid var(--line);
-      background: rgba(255,255,255,.72);
-      color: var(--text);
-      outline: none;
-    }
-
-    [data-theme="dark"] input { background: rgba(0,0,0,.16); }
-
-    input:focus { box-shadow: var(--ring); border-color: rgba(37,99,235,.35); }
-
-    .row {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .btn {
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: var(--paper2);
-      color: var(--text);
-      padding: 10px 12px;
-      cursor: pointer;
-      font-weight: 800;
-      font-size: 12px;
-      transition: transform .10s ease, border-color .16s ease, box-shadow .16s ease;
-    }
-
-    .btn:hover { transform: translateY(-1px); border-color: var(--line2); box-shadow: 0 10px 22px rgba(16,24,40,.10); }
-    .btn:active { transform: translateY(0); }
-
-    .btn.primary {
-      background: linear-gradient(135deg, rgba(37,99,235,.14), rgba(14,165,233,.12));
-      border-color: rgba(37,99,235,.22);
-      color: var(--text);
-    }
-
-    .btn.orange {
-      background: linear-gradient(135deg, rgba(249,115,22,.16), rgba(37,99,235,.08));
-      border-color: rgba(249,115,22,.24);
-    }
-
-    .btn.danger {
-      background: rgba(225,29,72,.10);
-      border-color: rgba(225,29,72,.28);
-      color: var(--text);
-    }
-
-    .btn.small { padding: 9px 10px; font-weight: 800; }
-
-    .stack { display: flex; flex-wrap: wrap; gap: 10px; }
-
-    .help {
-      margin-top: 8px;
-      color: var(--faint);
-      font-size: 12px;
-      line-height: 1.35;
-    }
-
-    .log {
-      border: 1px solid var(--line);
-      background: rgba(255,255,255,.65);
-      border-radius: 14px;
-      padding: 12px;
-      font-family: var(--mono);
-      font-size: 12px;
-      line-height: 1.35;
-      white-space: pre-wrap;
-      max-height: 420px;
-      overflow: auto;
-      color: rgba(15,23,42,.92);
-    }
-
-    [data-theme="dark"] .log { background: rgba(0,0,0,.20); color: rgba(233,240,255,.84); }
-
-    .statusRow { display:flex; align-items:center; justify-content: space-between; gap: 10px; }
-
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 7px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--line);
-      background: rgba(255,255,255,.55);
-      font-size: 12px;
-      color: var(--muted);
-      font-family: var(--mono);
-    }
-
-    [data-theme="dark"] .pill { background: rgba(0,0,0,.18); }
-
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 5px rgba(245,158,11,.15); }
-    .dot.ok { background: var(--ok); box-shadow: 0 0 0 5px rgba(22,163,74,.12); }
-    .dot.err { background: var(--danger); box-shadow: 0 0 0 5px rgba(225,29,72,.14); }
-
-    .small {
-      font-size: 12px;
-      color: var(--faint);
-      font-family: var(--mono);
-    }
-
-    .sidebar h3 {
-      margin: 0;
-      font-size: 12px;
-      letter-spacing: .10em;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
-
-    .sideBlock { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); }
-
-    .sidePath {
-      margin-top: 8px;
-      border: 1px solid var(--line);
-      background: var(--paper2);
-      border-radius: 12px;
-      padding: 10px;
-      font-family: var(--mono);
-      font-size: 12px;
-      color: var(--muted);
-      word-break: break-word;
-    }
-
-    .sideBtn { width: 100%; margin-top: 8px; }
-
-    .rep {
-      width: 100%;
-      text-align: left;
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      background: var(--paper2);
-      padding: 10px 12px;
-      cursor: pointer;
-      font-family: var(--mono);
-      font-size: 12px;
-      color: var(--muted);
-    }
-    .rep:hover { border-color: var(--line2); box-shadow: 0 10px 22px rgba(16,24,40,.10); }
-    .repActive { border-color: rgba(59,130,246,.55); box-shadow: 0 0 0 4px rgba(59,130,246,.12); }
-
-    .md-h1{ font-size: 20px; margin: 10px 0 6px; }
-    .md-h2{ font-size: 16px; margin: 10px 0 6px; }
-    .md-h3{ font-size: 14px; margin: 10px 0 6px; }
-    .md-p{ margin: 6px 0; color: var(--muted); line-height: 1.5; }
-    .md-ul{ margin: 6px 0 6px 18px; color: var(--muted); }
-    .md-inline{ font-family: var(--mono); font-size: 12px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.55); }
-    [data-theme="dark"] .md-inline{ background: rgba(0,0,0,.18); }
-    .md-code{ background: rgba(0,0,0,.05); border: 1px solid var(--line); border-radius: 14px; padding: 12px; overflow:auto; }
-    [data-theme="dark"] .md-code{ background: rgba(0,0,0,.22); }
-    .md-sp{ height: 10px; }
-
-    .k { display: inline-block; padding: 2px 6px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.65); font-family: var(--mono); font-size: 12px; color: var(--muted); }
-    [data-theme="dark"] .k { background: rgba(0,0,0,.18); }
-
-  </style>
+  <link rel="stylesheet" href="/app.css" />
 </head>
 <body>
   <div class="app">
     <div class="frame">
+      <div class="shell">
 
-      <aside class="sidebar">
-        <div style="display:flex; align-items:center; justify-content: space-between; gap:10px;">
-          <h3>FREYA</h3>
-          <span class="pill"><span class="dot" id="dot"></span><span id="pill">idle</span></span>
-        </div>
+        <aside class="sidebar">
+          <div class="sideHeader">
+            <div class="logo">FREYA</div>
+            <div class="statusPill"><span class="dot" id="dot"></span><span id="pill">idle</span></div>
+          </div>
 
-        <div class="sideBlock">
-          <h3>Workspace</h3>
           <div class="sidePath" id="sidePath">./freya</div>
-          <button class="btn sideBtn" onclick="pickDir()">Select workspace…</button>
-          <button class="btn primary sideBtn" onclick="doInit()">Init workspace</button>
-          <button class="btn sideBtn" onclick="doUpdate()">Update (preserve data/logs)</button>
-          <button class="btn sideBtn" onclick="doHealth()">Health</button>
-          <button class="btn sideBtn" onclick="doMigrate()">Migrate</button>
-          <div class="help">Dica: se você já tem uma workspace antiga, use <b>Update</b>. Por padrão, <b>data/</b> e <b>logs/</b> não são sobrescritos.</div>
-        </div>
 
-        <div class="sideBlock">
-          <h3>Atalhos</h3>
-          <div class="help"><span class="k">--dev</span> cria dados de exemplo para testar rápido.</div>
-          <div class="help"><span class="k">--port</span> muda a porta (default 3872).</div>
-        </div>
-      </aside>
-
-      <main class="main">
-        <div class="topbar">
-          <div class="brand"><span class="spark"></span> Local-first status assistant</div>
-          <div class="actions">
-            <span class="chip" id="chipPort">127.0.0.1:3872</span>
-            <button class="toggle" id="themeToggle" onclick="toggleTheme()">Theme</button>
+          <div class="sideGroup">
+            <div class="sideTitle">Workspace</div>
+            <button class="btn sideBtn" onclick="pickDir()">Select workspace…</button>
+            <button class="btn primary sideBtn" onclick="doInit()">Init workspace</button>
+            <button class="btn sideBtn" onclick="doUpdate()">Update (preserve data/logs)</button>
+            <button class="btn sideBtn" onclick="doHealth()">Health</button>
+            <button class="btn sideBtn" onclick="doMigrate()">Migrate</button>
+            <div style="height:10px"></div>
+            <div class="help">Dica: se você já tem uma workspace antiga, use Update. Por padrão, data/logs não são sobrescritos.</div>
           </div>
-        </div>
 
-        <div class="section">
-          <h1>Morning, how can I help?</h1>
-          <div class="subtitle">Selecione uma workspace e gere relatórios (Executive / SM / Blockers / Daily). Você pode publicar no Discord/Teams com 1 clique.</div>
+          <div class="sideGroup">
+            <div class="sideTitle">Atalhos</div>
+            <div class="help"><span class="k">--dev</span> cria dados de exemplo para testar rápido.</div>
+            <div style="height:8px"></div>
+            <div class="help"><span class="k">--port</span> muda a porta (default 3872).</div>
+          </div>
+        </aside>
 
-          <div class="cards">
-            <div class="card" onclick="runReport('status')">
-              <div class="icon">E</div>
-              <div class="title">Executive report</div>
-              <div class="desc">Status pronto para stakeholders (entregas, projetos, blockers).</div>
-            </div>
-            <div class="card" onclick="runReport('sm-weekly')">
-              <div class="icon">S</div>
-              <div class="title">SM weekly</div>
-              <div class="desc">Resumo, wins, riscos e foco da próxima semana.</div>
-            </div>
-            <div class="card" onclick="runReport('blockers')">
-              <div class="icon orange">B</div>
-              <div class="title">Blockers</div>
-              <div class="desc">Lista priorizada por severidade + idade (pra destravar rápido).</div>
-            </div>
-            <div class="card" onclick="runReport('daily')">
-              <div class="icon">D</div>
-              <div class="title">Daily</div>
-              <div class="desc">Ontem / Hoje / Bloqueios — pronto pra standup.</div>
+        <main class="main">
+          <div class="topbar">
+            <div class="brand"><span class="spark"></span> Local-first status assistant</div>
+            <div class="actions">
+              <span class="chip" id="chipPort">127.0.0.1:3872</span>
+              <button class="toggle" id="themeToggle" onclick="toggleTheme()">Theme</button>
             </div>
           </div>
 
-          <div class="grid2">
-            <div class="panel">
-              <div class="panelHead"><b>Workspace & publish settings</b><span class="small" id="last"></span></div>
-              <div class="panelBody">
-                <label>Workspace dir</label>
-                <div class="row">
-                  <input id="dir" placeholder="./freya" />
-                  <button class="btn small" onclick="pickDir()">Browse</button>
-                </div>
-                <div class="help">Escolha a pasta que contém <code>data/</code>, <code>logs/</code> e <code>scripts/</code>.</div>
+          <div class="section">
+            <h1>Morning, how can I help?</h1>
+            <div class="subtitle">Selecione uma workspace e gere relatórios (Executive / SM / Blockers / Daily). Você pode publicar no Discord/Teams com 1 clique.</div>
 
-                <div style="height:12px"></div>
-
-                <label>Discord webhook URL</label>
-                <input id="discord" placeholder="https://discord.com/api/webhooks/..." />
-                <div style="height:10px"></div>
-
-                <label>Teams webhook URL</label>
-                <input id="teams" placeholder="https://..." />
-                <div class="help">Os webhooks ficam salvos na workspace em <code>data/settings/settings.json</code>.</div>
-
-                <div style="height:10px"></div>
-                <div class="stack">
-                  <button class="btn" onclick="saveSettings()">Save settings</button>
-                  <button class="btn" onclick="publish('discord')">Publish selected → Discord</button>
-                  <button class="btn" onclick="publish('teams')">Publish selected → Teams</button>
-                </div>
-
-                <div style="height:14px"></div>
-
-                <div class="help"><b>Dica:</b> clique em um relatório em <i>Reports</i> para ver o preview e habilitar publish/copy.</div>
+            <div class="cards">
+              <div class="card" onclick="runReport('status')">
+                <div class="icon">E</div>
+                <div class="title">Executive report</div>
+                <div class="desc">Status pronto para stakeholders (entregas, projetos, blockers).</div>
+              </div>
+              <div class="card" onclick="runReport('sm-weekly')">
+                <div class="icon">S</div>
+                <div class="title">SM weekly</div>
+                <div class="desc">Resumo, wins, riscos e foco da próxima semana.</div>
+              </div>
+              <div class="card" onclick="runReport('blockers')">
+                <div class="icon orange">B</div>
+                <div class="title">Blockers</div>
+                <div class="desc">Lista priorizada por severidade + idade (pra destravar rápido).</div>
+              </div>
+              <div class="card" onclick="runReport('daily')">
+                <div class="icon">D</div>
+                <div class="title">Daily</div>
+                <div class="desc">Ontem / Hoje / Bloqueios — pronto pra standup.</div>
               </div>
             </div>
 
-            <div class="panel">
-              <div class="panelHead">
-                <b>Reports</b>
-                <div class="stack">
-                  <button class="btn small" onclick="refreshReports()">Refresh</button>
+            <div class="grid2">
+              <div class="panel">
+                <div class="panelHead"><b>Workspace & publish settings</b><span class="small" id="last"></span></div>
+                <div class="panelBody">
+                  <label>Workspace dir</label>
+                  <div class="row">
+                    <input id="dir" placeholder="./freya" />
+                    <button class="btn small" onclick="pickDir()">Browse</button>
+                  </div>
+                  <div class="help">Escolha a pasta que contém <code>data/</code>, <code>logs/</code> e <code>scripts/</code>.</div>
+
+                  <div style="height:12px"></div>
+
+                  <label>Discord webhook URL</label>
+                  <input id="discord" placeholder="https://discord.com/api/webhooks/..." />
+                  <div style="height:10px"></div>
+
+                  <label>Teams webhook URL</label>
+                  <input id="teams" placeholder="https://..." />
+                  <div class="help">Os webhooks ficam salvos na workspace em <code>data/settings/settings.json</code>.</div>
+
+                  <div style="height:10px"></div>
+                  <div class="stack">
+                    <button class="btn" onclick="saveSettings()">Save settings</button>
+                    <button class="btn" onclick="publish('discord')">Publish selected → Discord</button>
+                    <button class="btn" onclick="publish('teams')">Publish selected → Teams</button>
+                  </div>
+
+                  <div style="height:14px"></div>
+
+                  <div class="help"><b>Dica:</b> clique em um relatório em <i>Reports</i> para ver o preview e habilitar publish/copy.</div>
                 </div>
               </div>
-              <div class="panelBody">
-                <input id="reportsFilter" placeholder="filter (ex: daily, executive, 2026-01-29)" style="width:100%; margin-bottom:10px" oninput="renderReportsList()" />
-                <div id="reportsList" style="display:grid; gap:8px"></div>
-                <div class="help">Últimos relatórios em <code>docs/reports</code>. Clique para abrir preview.</div>
-              </div>
-            </div>
 
-            <div class="panel">
-              <div class="panelHead">
-                <b>Preview</b>
-                <div class="stack">
-                  <button class="btn small" onclick="copyOut()">Copy</button>
-                  <button class="btn small" onclick="clearOut()">Clear</button>
+              <div class="panel">
+                <div class="panelHead">
+                  <b>Reports</b>
+                  <div class="stack">
+                    <button class="btn small" onclick="refreshReports()">Refresh</button>
+                  </div>
+                </div>
+                <div class="panelBody">
+                  <input id="reportsFilter" placeholder="filter (ex: daily, executive, 2026-01-29)" style="width:100%; margin-bottom:10px" oninput="renderReportsList()" />
+                  <div id="reportsList" style="display:grid; gap:8px"></div>
+                  <div class="help">Últimos relatórios em <code>docs/reports</code>. Clique para abrir preview.</div>
                 </div>
               </div>
-              <div class="panelBody">
-                <div id="reportPreview" class="log md" style="font-family: var(--sans);"></div>
-                <div class="help">O preview renderiza Markdown básico (headers, listas, code). O botão Copy copia o conteúdo completo.</div>
+
+              <div class="panel">
+                <div class="panelHead">
+                  <b>Preview</b>
+                  <div class="stack">
+                    <button class="btn small" onclick="copyOut()">Copy</button>
+                    <button class="btn small" onclick="clearOut()">Clear</button>
+                  </div>
+                </div>
+                <div class="panelBody">
+                  <div id="reportPreview" class="log md" style="font-family: var(--sans);"></div>
+                  <div class="help">O preview renderiza Markdown básico (headers, listas, code). O botão Copy copia o conteúdo completo.</div>
+                </div>
               </div>
             </div>
-
           </div>
-        </div>
+        </main>
 
-      </main>
-
+      </div>
     </div>
   </div>
 
-<script>
-  window.__FREYA_DEFAULT_DIR = "${safeDefault}";
-  const $ = (id) => document.getElementById(id);
-  const state = { lastReportPath: null, lastText: '', reports: [], selectedReport: null };
-
-  function applyTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('freya.theme', theme);
-    $('themeToggle').textContent = theme === 'dark' ? 'Light' : 'Dark';
-  }
-
-  function toggleTheme() {
-    const t = localStorage.getItem('freya.theme') || 'light';
-    applyTheme(t === 'dark' ? 'light' : 'dark');
-  }
-
-  function setPill(kind, text) {
-    const dot = $('dot');
-    dot.classList.remove('ok','err');
-    if (kind === 'ok') dot.classList.add('ok');
-    if (kind === 'err') dot.classList.add('err');
-    $('pill').textContent = text;
-    $('status') && ($('status').textContent = text);
-  }
-
-  function escapeHtml(str) {
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/\"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
-
-  function renderMarkdown(md) {
-    const lines = String(md || '').split(/\\r?\\n/);
-    let html = '';
-    let inCode = false;
-    let inList = false;
-
-    const NL = String.fromCharCode(10);
-    const BT = String.fromCharCode(96); // backtick
-    const FENCE = BT + BT + BT;
-    const inlineCodeRe = /\x60([^\x60]+)\x60/g;
-
-    const closeList = () => {
-      if (inList) { html += '</ul>'; inList = false; }
-    };
-
-    for (const line of lines) {
-      if (line.trim().startsWith(FENCE)) {
-        if (!inCode) {
-          closeList();
-          inCode = true;
-          html += '<pre class="md-code"><code>';
-        } else {
-          inCode = false;
-          html += '</code></pre>';
-        }
-        continue;
-      }
-
-      if (inCode) {
-        html += escapeHtml(line) + NL;
-        continue;
-      }
-
-      const h = line.match(/^(#{1,3})[ \t]+(.*)$/);
-      if (h) {
-        closeList();
-        const lvl = h[1].length;
-        html += '<h' + lvl + ' class="md-h' + lvl + '">' + escapeHtml(h[2]) + '</h' + lvl + '>';
-        continue;
-      }
-
-      const li = line.match(/^[ \t]*[-*][ \t]+(.*)$/);
-      if (li) {
-        if (!inList) { html += '<ul class="md-ul">'; inList = true; }
-        const content = escapeHtml(li[1]).replace(inlineCodeRe, '<code class="md-inline">$1</code>');
-        html += '<li>' + content + '</li>';
-        continue;
-      }
-
-      if (line.trim() === '') {
-        closeList();
-        html += '<div class="md-sp"></div>';
-        continue;
-      }
-
-      closeList();
-      const p = escapeHtml(line).replace(inlineCodeRe, '<code class="md-inline">$1</code>');
-      html += '<p class="md-p">' + p + '</p>';
-    }
-
-    closeList();
-    if (inCode) html += '</code></pre>';
-    return html;
-  }
-
-  function setOut(text) {
-    state.lastText = text || '';
-    const el = $('reportPreview');
-    if (el) el.innerHTML = renderMarkdown(state.lastText);
-  }
-
-  function clearOut() {
-    state.lastText = '';
-    const el = $('reportPreview');
-    if (el) el.innerHTML = '';
-    setPill('ok', 'idle');
-  }
-
-  async function copyOut() {
-    try {
-      await navigator.clipboard.writeText(state.lastText || '');
-      setPill('ok','copied');
-      setTimeout(() => setPill('ok','idle'), 800);
-    } catch (e) {
-      setPill('err','copy failed');
-    }
-  }
-
-  function setLast(p) {
-    state.lastReportPath = p;
-    $('last').textContent = p ? ('Last report: ' + p) : '';
-  }
-
-  function saveLocal() {
-    localStorage.setItem('freya.dir', $('dir').value);
-  }
-
-  function loadLocal() {
-    $('dir').value = (window.__FREYA_DEFAULT_DIR && window.__FREYA_DEFAULT_DIR !== '__FREYA_DEFAULT_DIR__') ? window.__FREYA_DEFAULT_DIR : (localStorage.getItem('freya.dir') || './freya');
-    $('sidePath').textContent = $('dir').value || './freya';
-    // Always persist the current run's default dir to avoid stale values
-    localStorage.setItem('freya.dir', $('dir').value || './freya');
-  }
-
-  async function api(p, body) {
-    const res = await fetch(p, {
-      method: body ? 'POST' : 'GET',
-      headers: body ? { 'Content-Type': 'application/json' } : {},
-      body: body ? JSON.stringify(body) : undefined
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Request failed');
-    return json;
-  }
-
-  function dirOrDefault() {
-    const d = $('dir').value.trim();
-    return d || './freya';
-  }
-
-  function fmtWhen(ms) {
-    try {
-      const d = new Date(ms);
-      const yy = String(d.getFullYear());
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      const hh = String(d.getHours()).padStart(2, '0');
-      const mi = String(d.getMinutes()).padStart(2, '0');
-      return yy + '-' + mm + '-' + dd + ' ' + hh + ':' + mi;
-    } catch {
-      return '';
-    }
-  }
-
-  async function selectReport(item) {
-    const rr = await api('/api/reports/read', { dir: dirOrDefault(), relPath: item.relPath });
-    state.selectedReport = item;
-    setLast(item.name);
-    setOut(rr.text || '');
-    renderReportsList();
-  }
-
-  function renderReportsList() {
-    const list = $('reportsList');
-    if (!list) return;
-    const q = ($('reportsFilter') ? $('reportsFilter').value : '').trim().toLowerCase();
-    const filtered = (state.reports || []).filter((it) => {
-      if (!q) return true;
-      return (it.name + ' ' + it.kind).toLowerCase().includes(q);
-    });
-
-    list.innerHTML = '';
-    for (const item of filtered) {
-      const btn = document.createElement('button');
-      btn.className = 'rep' + (state.selectedReport && state.selectedReport.relPath === item.relPath ? ' repActive' : '');
-      btn.type = 'button';
-      const meta = fmtWhen(item.mtimeMs);
-      btn.innerHTML =
-        '<div style="display:flex; gap:10px; align-items:center; justify-content:space-between">'
-        + '<div style="min-width:0">'
-        + '<div><span style="font-weight:800">' + escapeHtml(item.kind) + '</span> <span style="opacity:.7">—</span> ' + escapeHtml(item.name) + '</div>'
-        + '<div style="opacity:.65; font-size:11px; margin-top:4px">' + escapeHtml(item.relPath) + '</div>'
-        + '</div>'
-        + '<div style="opacity:.7; font-size:11px; white-space:nowrap">' + escapeHtml(meta) + '</div>'
-        + '</div>';
-
-      btn.onclick = async () => {
-        try {
-          await selectReport(item);
-        } catch (e) {
-          setPill('err', 'open failed');
-        }
-      };
-      list.appendChild(btn);
-    }
-  }
-
-  async function refreshReports() {
-    try {
-      const r = await api('/api/reports/list', { dir: dirOrDefault() });
-      state.reports = (r.reports || []).slice(0, 50);
-      renderReportsList();
-
-      // Auto-select latest if nothing selected yet
-      if (!state.selectedReport && state.reports && state.reports[0]) {
-        await selectReport(state.reports[0]);
-      }
-    } catch (e) {
-      // ignore
-    }
-  }
-
-  async function pickDir() {
-    try {
-      setPill('run','picker…');
-      const r = await api('/api/pick-dir', {});
-      if (r && r.dir) {
-        $('dir').value = r.dir;
-        $('sidePath').textContent = r.dir;
-      }
-      saveLocal();
-      setPill('ok','ready');
-    } catch (e) {
-      setPill('err','picker failed');
-      setOut(String(e && e.message ? e.message : e));
-    }
-  }
-
-  async function doInit() {
-    try {
-      saveLocal();
-      $('sidePath').textContent = dirOrDefault();
-      setPill('run','init…');
-      setOut('');
-      const r = await api('/api/init', { dir: dirOrDefault() });
-      setOut(r.output);
-      setLast(null);
-      await refreshReports();
-      setPill('ok','init ok');
-    } catch (e) {
-      setPill('err','init failed');
-      setOut(String(e && e.message ? e.message : e));
-    }
-  }
-
-  async function doUpdate() {
-    try {
-      saveLocal();
-      $('sidePath').textContent = dirOrDefault();
-      setPill('run','update…');
-      setOut('');
-      const r = await api('/api/update', { dir: dirOrDefault() });
-      setOut(r.output);
-      setLast(null);
-      await refreshReports();
-      setPill('ok','update ok');
-    } catch (e) {
-      setPill('err','update failed');
-      setOut(String(e && e.message ? e.message : e));
-    }
-  }
-
-  async function doHealth() {
-    try {
-      saveLocal();
-      $('sidePath').textContent = dirOrDefault();
-      setPill('run','health…');
-      setOut('');
-      const r = await api('/api/health', { dir: dirOrDefault() });
-      setOut(r.output);
-      setLast(null);
-      setPill('ok','health ok');
-    } catch (e) {
-      setPill('err','health failed');
-      setOut(String(e && e.message ? e.message : e));
-    }
-  }
-
-  async function doMigrate() {
-    try {
-      saveLocal();
-      $('sidePath').textContent = dirOrDefault();
-      setPill('run','migrate…');
-      setOut('');
-      const r = await api('/api/migrate', { dir: dirOrDefault() });
-      setOut(r.output);
-      setLast(null);
-      setPill('ok','migrate ok');
-    } catch (e) {
-      setPill('err','migrate failed');
-      setOut(String(e && e.message ? e.message : e));
-    }
-  }
-
-  async function runReport(name) {
-    try {
-      saveLocal();
-      $('sidePath').textContent = dirOrDefault();
-      setPill('run', name + '…');
-      setOut('');
-      const r = await api('/api/report', { dir: dirOrDefault(), script: name });
-      setOut(r.output);
-      setLast(r.reportPath || null);
-      if (r.reportText) state.lastText = r.reportText;
-      await refreshReports();
-      setPill('ok', name + ' ok');
-    } catch (e) {
-      setPill('err', name + ' failed');
-      setOut(String(e && e.message ? e.message : e));
-    }
-  }
-
-  async function saveSettings() {
-    try {
-      saveLocal();
-      setPill('run','saving…');
-      await api('/api/settings/save', {
-        dir: dirOrDefault(),
-        settings: {
-          discordWebhookUrl: $('discord').value.trim(),
-          teamsWebhookUrl: $('teams').value.trim()
-        }
-      });
-      setPill('ok','saved');
-      setTimeout(() => setPill('ok','idle'), 800);
-    } catch (e) {
-      setPill('err','save failed');
-    }
-  }
-
-  async function publish(target) {
-    try {
-      saveLocal();
-      if (!state.lastText) throw new Error('Gere um relatório primeiro.');
-      const webhookUrl = target === 'discord' ? $('discord').value.trim() : $('teams').value.trim();
-      if (!webhookUrl) throw new Error('Configure o webhook antes.');
-      setPill('run','publish…');
-      await api('/api/publish', { webhookUrl, text: state.lastText });
-      setPill('ok','published');
-    } catch (e) {
-      setPill('err','publish failed');
-      setOut(String(e && e.message ? e.message : e));
-    }
-  }
-
-  // Expose handlers for inline onclick="..." attributes
-  window.doInit = doInit;
-  window.doUpdate = doUpdate;
-  window.doHealth = doHealth;
-  window.doMigrate = doMigrate;
-  window.pickDir = pickDir;
-  window.runReport = runReport;
-  window.publish = publish;
-  window.saveSettings = saveSettings;
-  window.refreshReports = refreshReports;
-  window.renderReportsList = renderReportsList;
-  window.copyOut = copyOut;
-  window.clearOut = clearOut;
-  window.toggleTheme = toggleTheme;
-
-  // init
-  applyTheme(localStorage.getItem('freya.theme') || 'light');
-  $('chipPort').textContent = location.host;
-  loadLocal();
-
-  // Load persisted settings from the workspace
-  (async () => {
-    try {
-      const r = await api('/api/defaults', { dir: dirOrDefault() });
-      if (r && r.workspaceDir) {
-        $('dir').value = r.workspaceDir;
-        $('sidePath').textContent = r.workspaceDir;
-      }
-      if (r && r.settings) {
-        $('discord').value = r.settings.discordWebhookUrl || '';
-        $('teams').value = r.settings.teamsWebhookUrl || '';
-      }
-    } catch (e) {
-      // ignore
-    }
-    refreshReports();
-  })();
-
-  setPill('ok','idle');
-</script>
+  <script>
+    window.__FREYA_DEFAULT_DIR = "${safeDefault}";
+  </script>
+  <script src="/app.js"></script>
 </body>
 </html>`;
 }
@@ -1416,6 +586,20 @@ async function cmdWeb({ port, dir, open, dev }) {
         const body = html(dir || './freya');
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
         res.end(body);
+        return;
+      }
+
+      if (req.method === 'GET' && req.url === '/app.css') {
+        const css = fs.readFileSync(path.join(__dirname, 'web-ui.css'), 'utf8');
+        res.writeHead(200, { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': 'no-store' });
+        res.end(css);
+        return;
+      }
+
+      if (req.method === 'GET' && req.url === '/app.js') {
+        const js = fs.readFileSync(path.join(__dirname, 'web-ui.js'), 'utf8');
+        res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-store' });
+        res.end(js);
         return;
       }
 
