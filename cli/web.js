@@ -1279,6 +1279,19 @@ async function cmdWeb({ port, dir, open, dev }) {
             }
           }
 
+          // Auto-suggest reports when planner didn't include any
+          // (keeps UX consistent: if you created a blocker, at least suggest blockers)
+          if (!applied.reportsSuggested.length) {
+            const sug = [];
+            sug.push('daily');
+            if (applied.blockers > 0) sug.push('blockers');
+            if ((applied.tasks > 0 || applied.blockers > 0) && applyMode !== 'blockers') sug.push('status');
+            applied.reportsSuggested = Array.from(new Set(sug));
+          } else {
+            // Dedup
+            applied.reportsSuggested = Array.from(new Set(applied.reportsSuggested.map((s) => String(s).trim()).filter(Boolean)));
+          }
+
           // Persist
           writeJson(taskFile, taskLog);
           writeJson(blockerFile, blockerLog);
