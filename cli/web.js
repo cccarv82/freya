@@ -368,6 +368,16 @@ function safeJson(res, code, obj) {
   res.end(body);
 }
 
+function looksEmptyWorkspace(dir) {
+  try {
+    if (!exists(dir)) return true;
+    const entries = fs.readdirSync(dir).filter((n) => !['.debuglogs', '.DS_Store'].includes(n));
+    return entries.length === 0;
+  } catch {
+    return true;
+  }
+}
+
 function looksLikeFreyaWorkspace(dir) {
   // minimal check: has scripts/validate-data.js and data/
   return (
@@ -1415,12 +1425,21 @@ async function cmdWeb({ port, dir, open, dev }) {
 
   const url = `http://${host}:${port}/`;
 
-  // Optional dev seed (safe: only creates files if missing)
+  // Optional dev seed
+  // Safety rules:
+  // - only seed when workspace is empty OR already initialized as a Freya workspace
+  // - never overwrite non-dev user content
   if (dev) {
     const target = dir ? path.resolve(process.cwd(), dir) : path.join(process.cwd(), 'freya');
     try {
-      seedDevWorkspace(target);
-      process.stdout.write(`Dev seed: created demo files in ${target}\n`);
+      const targetOk = looksLikeFreyaWorkspace(target);
+      const empty = looksEmptyWorkspace(target);
+      if (!targetOk && !empty) {
+        process.stdout.write(`Dev seed: skipped (workspace not empty and not initialized) -> ${target}\n`);
+      } else {
+        seedDevWorkspace(target);
+        process.stdout.write(`Dev seed: created demo files in ${target}\n`);
+      }
     } catch (e) {
       process.stdout.write(`Dev seed failed: ${e.message || String(e)}\n`);
     }
