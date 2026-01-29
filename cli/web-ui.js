@@ -344,6 +344,44 @@
     }
   }
 
+  async function editTask(t) {
+    try {
+      const currentSlug = t.projectSlug ? String(t.projectSlug) : '';
+      const slug = prompt('projectSlug (ex: vivo/fidelizacao/chg0178682):', currentSlug);
+      if (slug === null) return;
+
+      const currentCat = String(t.category || 'DO_NOW');
+      const cat = prompt('category (DO_NOW|SCHEDULE|DELEGATE|IGNORE):', currentCat);
+      if (cat === null) return;
+
+      setPill('run', 'updating…');
+      await api('/api/tasks/update', { dir: dirOrDefault(), id: t.id, patch: { projectSlug: slug, category: cat } });
+      await refreshToday();
+      setPill('ok', 'updated');
+      setTimeout(() => setPill('ok', 'idle'), 800);
+    } catch (e) {
+      setPill('err', 'update failed');
+      setOut(String(e && e.message ? e.message : e));
+    }
+  }
+
+  async function editBlocker(b) {
+    try {
+      const currentSlug = b.projectSlug ? String(b.projectSlug) : '';
+      const slug = prompt('projectSlug (ex: vivo/bnpl/dpgc):', currentSlug);
+      if (slug === null) return;
+
+      setPill('run', 'updating…');
+      await api('/api/blockers/update', { dir: dirOrDefault(), id: b.id, patch: { projectSlug: slug } });
+      await refreshToday();
+      setPill('ok', 'updated');
+      setTimeout(() => setPill('ok', 'idle'), 800);
+    } catch (e) {
+      setPill('err', 'update failed');
+      setOut(String(e && e.message ? e.message : e));
+    }
+  }
+
   function renderTasks(list) {
     const el = $('tasksList');
     if (!el) return;
@@ -357,9 +395,14 @@
         + '<div style="opacity:.7; font-size:11px; margin-top:4px">' + escapeHtml(String(t.category || ''))
         + (t.projectSlug ? (' · <span style="font-family:var(--mono); opacity:.9">[' + escapeHtml(String(t.projectSlug)) + ']</span>') : '')
         + (pri ? (' · ' + escapeHtml(pri)) : '') + '</div></div>'
+        + '<div style="display:flex; gap:8px">'
         + '<button class="btn small" type="button">Complete</button>'
+        + '<button class="btn small" type="button">Edit</button>'
+        + '</div>'
         + '</div>';
-      const btn = row.querySelector('button');
+      const btns = row.querySelectorAll('button');
+      const btn = btns[0];
+      if (btns[1]) btns[1].onclick = () => editTask(t);
       btn.onclick = async () => {
         try {
           setPill('run', 'completing…');
@@ -396,8 +439,13 @@
         + (b.projectSlug ? (' <span style="font-family:var(--mono); opacity:.8">[' + escapeHtml(String(b.projectSlug)) + ']</span>') : '')
         + '</div>'
         + '</div>'
+        + '<div style="display:flex; gap:8px; align-items:center">'
         + '<div style="opacity:.7; font-size:11px; white-space:nowrap">' + escapeHtml(fmtWhen(new Date(b.createdAt || Date.now()).getTime())) + '</div>'
+        + '<button class="btn small" type="button">Edit</button>'
+        + '</div>'
         + '</div>';
+      const ebtn = row.querySelector('button');
+      if (ebtn) ebtn.onclick = () => editBlocker(b);
       el.appendChild(row);
     }
     if (!el.childElementCount) {

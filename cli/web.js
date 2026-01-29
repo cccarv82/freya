@@ -1606,6 +1606,30 @@ async function cmdWeb({ port, dir, open, dev }) {
           return safeJson(res, 200, { ok: true, task: updated });
         }
 
+
+        if (req.url === '/api/tasks/update') {
+          const id = String(payload.id || '').trim();
+          if (!id) return safeJson(res, 400, { error: 'Missing id' });
+          const patch = payload.patch && typeof payload.patch === 'object' ? payload.patch : {};
+
+          const file = path.join(workspaceDir, 'data', 'tasks', 'task-log.json');
+          const doc = readJsonOrNull(file) || { schemaVersion: 1, tasks: [] };
+          const tasks = Array.isArray(doc.tasks) ? doc.tasks : [];
+
+          let updated = null;
+          for (const t of tasks) {
+            if (t && t.id === id) {
+              if (typeof patch.projectSlug === 'string') t.projectSlug = patch.projectSlug.trim() || undefined;
+              if (typeof patch.category === 'string') t.category = patch.category.trim();
+              updated = t;
+              break;
+            }
+          }
+          if (!updated) return safeJson(res, 404, { error: 'Task not found' });
+          writeJson(file, doc);
+          return safeJson(res, 200, { ok: true, task: updated });
+        }
+
         if (req.url === '/api/blockers/list') {
           const limit = Math.max(1, Math.min(50, Number(payload.limit || 10)));
           const status = payload.status ? String(payload.status).trim() : 'OPEN';
@@ -1639,6 +1663,29 @@ async function cmdWeb({ port, dir, open, dev }) {
 
           return safeJson(res, 200, { ok: true, blockers: filtered });
         }
+
+        if (req.url === '/api/blockers/update') {
+          const id = String(payload.id || '').trim();
+          if (!id) return safeJson(res, 400, { error: 'Missing id' });
+          const patch = payload.patch && typeof payload.patch === 'object' ? payload.patch : {};
+
+          const file = path.join(workspaceDir, 'data', 'blockers', 'blocker-log.json');
+          const doc = readJsonOrNull(file) || { schemaVersion: 1, blockers: [] };
+          const blockers = Array.isArray(doc.blockers) ? doc.blockers : [];
+
+          let updated = null;
+          for (const b of blockers) {
+            if (b && b.id === id) {
+              if (typeof patch.projectSlug === 'string') b.projectSlug = patch.projectSlug.trim() || undefined;
+              updated = b;
+              break;
+            }
+          }
+          if (!updated) return safeJson(res, 404, { error: 'Blocker not found' });
+          writeJson(file, doc);
+          return safeJson(res, 200, { ok: true, blocker: updated });
+        }
+
         if (req.url === '/api/report') {
           const script = payload.script;
           if (!script) return safeJson(res, 400, { error: 'Missing script' });
