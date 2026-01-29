@@ -21,7 +21,8 @@
   "files": [
     "bin",
     "cli",
-    "templates"
+    "templates",
+    ".agent"
   ],
   "preferGlobal": true
 }

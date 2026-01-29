@@ -763,8 +763,12 @@ async function cmdWeb({ port, dir, open, dev }) {
           const text = String(payload.text || '').trim();
           if (!text) return safeJson(res, 400, { error: 'Missing text' });
 
-          // Build planner prompt from agent rules (same ones used in IDE/MCP)
-          const rulesBase = path.join(workspaceDir, '.agent', 'rules', 'freya');
+          // Build planner prompt from agent rules.
+          // Prefer rules inside the selected workspace, but fallback to packaged rules.
+          const workspaceRulesBase = path.join(workspaceDir, '.agent', 'rules', 'freya');
+          const packagedRulesBase = path.join(__dirname, '..', '.agent', 'rules', 'freya');
+          const rulesBase = exists(workspaceRulesBase) ? workspaceRulesBase : packagedRulesBase;
+
           const files = [
             path.join(rulesBase, 'freya.mdc'),
             path.join(rulesBase, 'agents', 'master.mdc'),
@@ -773,7 +777,10 @@ async function cmdWeb({ port, dir, open, dev }) {
             path.join(rulesBase, 'agents', 'coach.mdc')
           ].filter(exists);
 
-          const rulesText = files.map((p) => `\n\n---\nFILE: ${path.relative(workspaceDir, p).replace(/\\/g,'/')}\n---\n` + fs.readFileSync(p, 'utf8')).join('');
+          const rulesText = files.map((p) => {
+            const rel = path.relative(workspaceDir, p).replace(/\\/g, '/');
+            return `\n\n---\nFILE: ${rel}\n---\n` + fs.readFileSync(p, 'utf8');
+          }).join('');
 
           const schema = {
             actions: [
@@ -790,14 +797,25 @@ async function cmdWeb({ port, dir, open, dev }) {
           // Prefer COPILOT_CMD if provided, otherwise try 'copilot'
           const cmd = process.env.COPILOT_CMD || 'copilot';
 
-          // Best-effort: if command not available, return a clear message
+          // Best-effort: if Copilot CLI isn't available, return 200 with an explanatory plan
+          // so the UI can show actionable next steps instead of hard-failing.
           try {
             const r = await run(cmd, ['-s', '--no-color', '--stream', 'off', '-p', prompt, '--allow-all-tools'], workspaceDir);
             const out = (r.stdout + r.stderr).trim();
-            if (r.code !== 0) return safeJson(res, 400, { error: out || 'copilot failed', output: out });
+            if (r.code !== 0) {
+              return safeJson(res, 200, {
+                ok: false,
+                plan: out || 'Copilot returned non-zero exit code.',
+                hint: 'Copilot CLI needs to be installed and authenticated.'
+              });
+            }
             return safeJson(res, 200, { ok: true, plan: out });
           } catch (e) {
-            return safeJson(res, 400, { error: `Copilot CLI not available (${cmd}). Configure COPILOT_CMD or install copilot.`, details: e.message || String(e) });
+            return safeJson(res, 200, {
+              ok: false,
+              plan: `Copilot CLI não disponível (cmd: ${cmd}).\n\nPara habilitar:\n- Windows (winget): winget install GitHub.Copilot\n- npm: npm i -g @github/copilot\n\nDepois rode \"copilot\" uma vez e faça /login.`,
+              details: e.message || String(e)
+            });
           }
         }
 

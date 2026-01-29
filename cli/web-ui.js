@@ -455,10 +455,12 @@
       state.lastPlan = r.plan || '';
 
       // Show plan output in Preview panel
-      setOut('## Agent Plan (draft)\n\n' + (r.plan || ''));
+      const header = r.ok === false ? '## Agent Plan (planner unavailable)\n\n' : '## Agent Plan (draft)\n\n';
+      setOut(header + (r.plan || ''));
       ta.value = '';
 
-      setPill('ok', 'planned');
+      if (r.ok === false) setPill('err', 'planner off');
+      else setPill('ok', 'planned');
       setTimeout(() => setPill('ok', 'idle'), 800);
     } catch (e) {
       setPill('err', 'plan failed');
