@@ -127,6 +127,36 @@
     }
   }
 
+  async function copyPath() {
+    try {
+      if (!state.selectedReport) {
+        setPill('err', 'no report');
+        return;
+      }
+      const r = await api('/api/reports/resolve', { dir: dirOrDefault(), relPath: state.selectedReport.relPath });
+      await navigator.clipboard.writeText(r.fullPath || '');
+      setPill('ok', 'path copied');
+      setTimeout(() => setPill('ok', 'idle'), 800);
+    } catch {
+      setPill('err', 'copy path failed');
+    }
+  }
+
+  async function openSelected() {
+    try {
+      if (!state.selectedReport) {
+        setPill('err', 'no report');
+        return;
+      }
+      setPill('run', 'opening…');
+      await api('/api/reports/open', { dir: dirOrDefault(), relPath: state.selectedReport.relPath });
+      setPill('ok', 'opened');
+      setTimeout(() => setPill('ok', 'idle'), 800);
+    } catch {
+      setPill('err', 'open failed');
+    }
+  }
+
   function downloadSelected() {
     try {
       if (!state.selectedReport || !state.lastText) {
@@ -424,6 +454,8 @@
   window.refreshReports = refreshReports;
   window.renderReportsList = renderReportsList;
   window.copyOut = copyOut;
+  window.copyPath = copyPath;
+  window.openSelected = openSelected;
   window.downloadSelected = downloadSelected;
   window.clearOut = clearOut;
   window.toggleTheme = toggleTheme;
