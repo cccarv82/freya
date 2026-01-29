@@ -1000,8 +1000,8 @@ async function cmdWeb({ port, dir, open, dev }) {
           const schema = {
             actions: [
               { type: 'append_daily_log', text: '<string>' },
-              { type: 'create_task', description: '<string>', priority: 'HIGH|MEDIUM|LOW', category: 'DO_NOW|SCHEDULE|DELEGATE|IGNORE' },
-              { type: 'create_blocker', title: '<string>', severity: 'CRITICAL|HIGH|MEDIUM|LOW', notes: '<string>' },
+              { type: 'create_task', description: '<string>', priority: 'HIGH|MEDIUM|LOW', category: 'DO_NOW|SCHEDULE|DELEGATE|IGNORE', projectSlug: '<string optional>' },
+              { type: 'create_blocker', title: '<string>', severity: 'CRITICAL|HIGH|MEDIUM|LOW', notes: '<string>', projectSlug: '<string optional>' },
               { type: 'suggest_report', name: 'daily|status|sm-weekly|blockers' },
               { type: 'oracle_query', query: '<string>' }
             ]
@@ -1082,7 +1082,8 @@ async function cmdWeb({ port, dir, open, dev }) {
               const priorityRaw = String(a.priority || '').trim().toLowerCase();
               const priority = (priorityRaw === 'high' || priorityRaw === 'medium' || priorityRaw === 'low') ? priorityRaw : undefined;
               if (!description) { preview.errors.push('Task missing description'); continue; }
-              preview.tasks.push({ description, category: validTaskCats.has(category) ? category : 'DO_NOW', priority });
+              const projectSlug = String(a.projectSlug || '').trim();
+              preview.tasks.push({ description, category: validTaskCats.has(category) ? category : 'DO_NOW', priority, projectSlug: projectSlug || undefined });
               continue;
             }
 
@@ -1098,7 +1099,8 @@ async function cmdWeb({ port, dir, open, dev }) {
                 else severity = 'MEDIUM';
               }
               if (!title) { preview.errors.push('Blocker missing title'); continue; }
-              preview.blockers.push({ title, notes, severity });
+              const projectSlug = String(a.projectSlug || '').trim();
+              preview.blockers.push({ title, notes, severity, projectSlug: projectSlug || undefined });
               continue;
             }
 
@@ -1254,7 +1256,8 @@ async function cmdWeb({ port, dir, open, dev }) {
               if (applyMode !== 'all' && applyMode !== 'tasks') continue;
               const description = normalizeWhitespace(a.description);
               if (!description) continue;
-              const key = sha1(normalizeTextForKey(description));
+              const projectSlug = String(a.projectSlug || '').trim();
+              const key = sha1(normalizeTextForKey((projectSlug ? projectSlug + ' ' : '') + description));
               if (existingTaskKeys24h.has(key)) { applied.tasksSkipped++; continue; }
               const category = validTaskCats.has(String(a.category || '').trim()) ? String(a.category).trim() : 'DO_NOW';
               const priority = normPriority(a.priority);
@@ -1265,6 +1268,7 @@ async function cmdWeb({ port, dir, open, dev }) {
                 status: 'PENDING',
                 createdAt: now,
               };
+              if (projectSlug) task.projectSlug = projectSlug;
               if (priority) task.priority = priority;
               taskLog.tasks.push(task);
               applied.tasks++;
@@ -1274,7 +1278,8 @@ async function cmdWeb({ port, dir, open, dev }) {
             if (type === 'create_blocker') {
               if (applyMode !== 'all' && applyMode !== 'blockers') continue;
               const title = normalizeWhitespace(a.title);
-              const key = sha1(normalizeTextForKey(title));
+              const projectSlug = String(a.projectSlug || '').trim();
+              const key = sha1(normalizeTextForKey((projectSlug ? projectSlug + ' ' : '') + title));
               if (existingBlockerKeys24h.has(key)) { applied.blockersSkipped++; continue; }
               const notes = normalizeWhitespace(a.notes);
               if (!title) continue;
@@ -1287,6 +1292,7 @@ async function cmdWeb({ port, dir, open, dev }) {
                 status: 'OPEN',
                 severity,
               };
+              if (projectSlug) blocker.projectSlug = projectSlug;
               blockerLog.blockers.push(blocker);
               applied.blockers++;
               continue;
