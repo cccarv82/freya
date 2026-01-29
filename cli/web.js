@@ -17,19 +17,33 @@ function guessOpenCmd() {
 }
 
 function exists(p) {
-  try { fs.accessSync(p); return true; } catch { return false; }
+  try {
+    fs.accessSync(p);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function newestFile(dir, prefix) {
   if (!exists(dir)) return null;
-  const files = fs.readdirSync(dir)
+  const files = fs
+    .readdirSync(dir)
     .filter((f) => f.startsWith(prefix) && f.endsWith('.md'))
     .map((f) => ({ f, p: path.join(dir, f) }))
     .filter((x) => {
-      try { return fs.statSync(x.p).isFile(); } catch { return false; }
+      try {
+        return fs.statSync(x.p).isFile();
+      } catch {
+        return false;
+      }
     })
     .sort((a, b) => {
-      try { return fs.statSync(b.p).mtimeMs - fs.statSync(a.p).mtimeMs; } catch { return 0; }
+      try {
+        return fs.statSync(b.p).mtimeMs - fs.statSync(a.p).mtimeMs;
+      } catch {
+        return 0;
+      }
     });
   return files[0]?.p || null;
 }
@@ -58,8 +72,12 @@ function run(cmd, args, cwd) {
     const child = spawn(cmd, args, { cwd, shell: false, env: process.env });
     let stdout = '';
     let stderr = '';
-    child.stdout.on('data', (d) => { stdout += d.toString(); });
-    child.stderr.on('data', (d) => { stderr += d.toString(); });
+    child.stdout.on('data', (d) => {
+      stdout += d.toString();
+    });
+    child.stderr.on('data', (d) => {
+      stderr += d.toString();
+    });
     child.on('close', (code) => resolve({ code: code ?? 0, stdout, stderr }));
   });
 }
@@ -73,109 +91,410 @@ function openBrowser(url) {
   }
 }
 
+async function pickDirectoryNative() {
+  if (process.platform === 'win32') {
+    // PowerShell FolderBrowserDialog
+    const ps = [
+      '-NoProfile',
+      '-Command',
+      [
+        'Add-Type -AssemblyName System.Windows.Forms;',
+        '$f = New-Object System.Windows.Forms.FolderBrowserDialog;',
+        "$f.Description = 'Select your FREYA workspace folder';",
+        '$f.ShowNewFolderButton = $true;',
+        'if ($f.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { Write-Output $f.SelectedPath }'
+      ].join(' ')
+    ];
+    const r = await run('powershell', ps, process.cwd());
+    if (r.code !== 0) throw new Error((r.stderr || r.stdout || '').trim() || 'Failed to open folder picker');
+    const out = (r.stdout || '').trim();
+    return out || null;
+  }
+
+  if (process.platform === 'darwin') {
+    const r = await run('osascript', ['-e', 'POSIX path of (choose folder with prompt "Select your FREYA workspace folder")'], process.cwd());
+    if (r.code !== 0) throw new Error((r.stderr || r.stdout || '').trim() || 'Failed to open folder picker');
+    const out = (r.stdout || '').trim();
+    return out || null;
+  }
+
+  // Linux: prefer zenity, then kdialog
+  if (exists('/usr/bin/zenity') || exists('/bin/zenity') || exists('/usr/local/bin/zenity')) {
+    const r = await run('zenity', ['--file-selection', '--directory', '--title=Select your FREYA workspace folder'], process.cwd());
+    if (r.code !== 0) return null;
+    return (r.stdout || '').trim() || null;
+  }
+  if (exists('/usr/bin/kdialog') || exists('/bin/kdialog') || exists('/usr/local/bin/kdialog')) {
+    const r = await run('kdialog', ['--getexistingdirectory', '.', 'Select your FREYA workspace folder'], process.cwd());
+    if (r.code !== 0) return null;
+    return (r.stdout || '').trim() || null;
+  }
+
+  return null;
+}
+
 function html() {
+  // Aesthetic: “Noir control room” — dark glass, crisp typography, intentional hierarchy.
   return `<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>FREYA</title>
+  <title>FREYA Web</title>
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Helvetica, Arial; margin: 0; background: #0b0f14; color: #e6edf3; }
-    header { padding: 16px 18px; border-bottom: 1px solid #1f2a37; display:flex; gap:12px; align-items:center; }
-    header h1 { font-size: 14px; margin:0; letter-spacing: .08em; text-transform: uppercase; color:#9fb2c7; }
-    .wrap { max-width: 980px; margin: 0 auto; padding: 18px; }
-    .card { border: 1px solid #1f2a37; border-radius: 12px; background: #0f1620; padding: 14px; }
-    .grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
-    @media (min-width: 920px) { .grid { grid-template-columns: 1.2fr .8fr; } }
-    label { font-size: 12px; color:#9fb2c7; display:block; margin-bottom: 6px; }
-    input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #223041; background:#0b1220; color:#e6edf3; }
-    .btns { display:flex; flex-wrap:wrap; gap: 10px; margin-top: 10px; }
-    button { padding: 10px 12px; border-radius: 10px; border: 1px solid #223041; background:#1f6feb; color:white; cursor:pointer; }
-    button.secondary { background: transparent; color:#e6edf3; }
-    button.danger { background: #d73a49; }
-    .row { display:grid; grid-template-columns: 1fr; gap: 10px; }
-    .small { font-size: 12px; color:#9fb2c7; }
-    pre { white-space: pre-wrap; background:#0b1220; border: 1px solid #223041; border-radius: 12px; padding: 12px; overflow:auto; }
-    a { color:#58a6ff; }
+    :root {
+      --bg: #070a10;
+      --bg2: #0a1020;
+      --panel: rgba(255,255,255,.04);
+      --panel2: rgba(255,255,255,.06);
+      --line: rgba(180,210,255,.16);
+      --text: #e9f0ff;
+      --muted: rgba(233,240,255,.72);
+      --faint: rgba(233,240,255,.52);
+      --accent: #5eead4;
+      --accent2: #60a5fa;
+      --danger: #fb7185;
+      --ok: #34d399;
+      --warn: #fbbf24;
+      --shadow: 0 30px 70px rgba(0,0,0,.55);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(900px 560px at 18% 12%, rgba(94,234,212,.14), transparent 60%),
+        radial-gradient(820px 540px at 72% 6%, rgba(96,165,250,.14), transparent 60%),
+        radial-gradient(900px 700px at 70% 78%, rgba(251,113,133,.08), transparent 60%),
+        linear-gradient(180deg, var(--bg), var(--bg2));
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial;
+      overflow-x: hidden;
+    }
+
+    /* subtle noise */
+    body:before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(transparent 0, transparent 2px, rgba(255,255,255,.02) 3px),
+        radial-gradient(circle at 10% 10%, rgba(255,255,255,.06), transparent 35%),
+        radial-gradient(circle at 90% 30%, rgba(255,255,255,.04), transparent 35%);
+      background-size: 100% 6px, 900px 900px, 900px 900px;
+      mix-blend-mode: overlay;
+      opacity: .12;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      backdrop-filter: blur(14px);
+      background: rgba(7,10,16,.56);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .top {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      font-weight: 700;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .badge {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.03);
+      color: var(--faint);
+    }
+
+    .wrap {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 16px;
+      align-items: start;
+      margin-bottom: 16px;
+    }
+
+    @media (max-width: 980px) {
+      .hero { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card:before {
+      content: "";
+      position: absolute;
+      inset: -2px;
+      background:
+        radial-gradient(900px 220px at 25% 0%, rgba(94,234,212,.12), transparent 60%),
+        radial-gradient(900px 220px at 90% 30%, rgba(96,165,250,.10), transparent 60%);
+      opacity: .55;
+      pointer-events: none;
+    }
+
+    .card > * { position: relative; }
+
+    h2 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .sub {
+      margin: 0 0 10px;
+      font-size: 12px;
+      color: var(--faint);
+      line-height: 1.35;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .field {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(180,210,255,.22);
+      background: rgba(7,10,16,.55);
+      color: var(--text);
+      outline: none;
+    }
+
+    input::placeholder { color: rgba(233,240,255,.38); }
+
+    .btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    button {
+      border: 1px solid rgba(180,210,255,.22);
+      border-radius: 12px;
+      background: rgba(255,255,255,.04);
+      color: var(--text);
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: transform .08s ease, background .16s ease, border-color .16s ease;
+      font-weight: 600;
+      letter-spacing: .01em;
+    }
+
+    button:hover { transform: translateY(-1px); background: rgba(255,255,255,.06); border-color: rgba(180,210,255,.32); }
+    button:active { transform: translateY(0); }
+
+    .primary {
+      background: linear-gradient(135deg, rgba(94,234,212,.18), rgba(96,165,250,.16));
+      border-color: rgba(94,234,212,.28);
+    }
+
+    .ghost { background: rgba(255,255,255,.02); }
+
+    .danger { border-color: rgba(251,113,133,.45); background: rgba(251,113,133,.12); }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(180,210,255,.18);
+      background: rgba(0,0,0,.18);
+      font-size: 12px;
+      color: var(--faint);
+    }
+
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 5px rgba(251,191,36,.14); }
+    .dot.ok { background: var(--ok); box-shadow: 0 0 0 5px rgba(52,211,153,.12); }
+    .dot.err { background: var(--danger); box-shadow: 0 0 0 5px rgba(251,113,133,.12); }
+
+    .two {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 980px) { .two { grid-template-columns: 1fr; } }
+
+    .hr { height: 1px; background: rgba(180,210,255,.14); margin: 12px 0; }
+
+    .log {
+      border-radius: 14px;
+      border: 1px solid rgba(180,210,255,.18);
+      background: rgba(7,10,16,.55);
+      padding: 12px;
+      min-height: 220px;
+      max-height: 420px;
+      overflow: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height: 1.35;
+      white-space: pre-wrap;
+      color: rgba(233,240,255,.84);
+    }
+
+    .hint {
+      font-size: 12px;
+      color: var(--faint);
+      margin-top: 6px;
+      line-height: 1.35;
+    }
+
+    .footer {
+      margin-top: 12px;
+      font-size: 12px;
+      color: rgba(233,240,255,.45);
+    }
+
+    a { color: var(--accent2); text-decoration: none; }
+    a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
   <header>
-    <h1>FREYA • Local-first Status Assistant</h1>
-    <span class="small" id="status"></span>
+    <div class="top">
+      <div class="brand">FREYA <span style="opacity:.55">•</span> web console</div>
+      <div class="badge" id="status">ready</div>
+    </div>
   </header>
-  <div class="wrap">
-    <div class="grid">
-      <div class="card">
-        <div class="row">
-          <div>
-            <label>Workspace dir</label>
-            <input id="dir" placeholder="/path/to/freya (or ./freya)" />
-            <div class="small">Dica: a workspace é a pasta que contém <code>data/</code>, <code>logs/</code>, <code>scripts/</code>.</div>
-          </div>
-          <div class="btns">
-            <button onclick="doInit()">Init (preserva data/logs)</button>
-            <button class="secondary" onclick="doUpdate()">Update (init --here)</button>
-            <button class="secondary" onclick="doHealth()">Health</button>
-            <button class="secondary" onclick="doMigrate()">Migrate</button>
-          </div>
-        </div>
 
-        <hr style="border:0;border-top:1px solid #1f2a37;margin:14px 0" />
+  <div class="wrap">
+    <div class="hero">
+      <div class="card">
+        <h2>1) Workspace</h2>
+        <p class="sub">Escolha onde está (ou onde será criada) sua workspace da FREYA. Se você já tem uma workspace antiga, use <b>Update</b> — seus <b>data/logs</b> ficam preservados.</p>
+
+        <label>Workspace dir</label>
+        <div class="field">
+          <input id="dir" placeholder="./freya" />
+          <button class="ghost" onclick="pickDir()">Browse…</button>
+        </div>
+        <div class="hint">Dica: a workspace contém <code>data/</code>, <code>logs/</code> e <code>scripts/</code>.</div>
 
         <div class="btns">
-          <button onclick="runReport('status')">Generate Executive Report</button>
-          <button onclick="runReport('sm-weekly')">Generate SM Weekly</button>
-          <button onclick="runReport('blockers')">Generate Blockers</button>
-          <button onclick="runReport('daily')">Generate Daily</button>
+          <button class="primary" onclick="doInit()">Init</button>
+          <button onclick="doUpdate()">Update</button>
+          <button onclick="doHealth()">Health</button>
+          <button onclick="doMigrate()">Migrate</button>
         </div>
 
-        <div style="margin-top:12px">
-          <label>Output</label>
-          <pre id="out"></pre>
-          <div class="small" id="last"></div>
-        </div>
+        <div class="footer">Atalho: <code>freya web --dir ./freya</code> (porta padrão 3872).</div>
       </div>
 
       <div class="card">
-        <div class="row">
-          <div>
-            <label>Discord Webhook URL (optional)</label>
-            <input id="discord" placeholder="https://discord.com/api/webhooks/..." />
-          </div>
-          <div>
-            <label>Teams Webhook URL (optional)</label>
-            <input id="teams" placeholder="https://..." />
-          </div>
-          <div class="btns">
-            <button class="secondary" onclick="publish('discord')">Publish last → Discord</button>
-            <button class="secondary" onclick="publish('teams')">Publish last → Teams</button>
-          </div>
-          <div class="small">
-            Publica o último relatório gerado (cache local). Limite: ~1800 chars (pra evitar limites de webhook).
-          </div>
+        <h2>2) Publish</h2>
+        <p class="sub">Configure webhooks (opcional) para publicar relatórios com 1 clique. Ideal para mandar status no Teams/Discord.</p>
+
+        <label>Discord webhook URL</label>
+        <input id="discord" placeholder="https://discord.com/api/webhooks/..." />
+
+        <div style="height:10px"></div>
+        <label>Teams webhook URL</label>
+        <input id="teams" placeholder="https://..." />
+
+        <div class="hr"></div>
+        <div class="btns">
+          <button onclick="publish('discord')">Publish last → Discord</button>
+          <button onclick="publish('teams')">Publish last → Teams</button>
         </div>
+        <div class="hint">O publish usa o texto do último relatório gerado. Para MVP, limitamos em ~1800 caracteres (evita limites de webhook). Depois a gente melhora para anexos/chunks.</div>
+      </div>
+    </div>
+
+    <div class="two">
+      <div class="card">
+        <h2>3) Generate</h2>
+        <p class="sub">Gere relatórios e use o preview/log abaixo para validar. Depois, publique ou copie.</p>
+
+        <div class="btns">
+          <button class="primary" onclick="runReport('status')">Executive</button>
+          <button class="primary" onclick="runReport('sm-weekly')">SM Weekly</button>
+          <button class="primary" onclick="runReport('blockers')">Blockers</button>
+          <button class="ghost" onclick="runReport('daily')">Daily</button>
+        </div>
+
+        <div class="hint" id="last"></div>
       </div>
 
+      <div class="card">
+        <h2>Output</h2>
+        <div class="pill"><span class="dot" id="dot"></span><span id="pill">idle</span></div>
+        <div style="height:10px"></div>
+        <div class="log" id="out"></div>
+        <div class="footer">Dica: se o report foi salvo em arquivo, ele aparece em “Last report”.</div>
+      </div>
     </div>
   </div>
 
 <script>
   const $ = (id) => document.getElementById(id);
-  const state = {
-    lastReportPath: null,
-    lastText: ''
-  };
+  const state = { lastReportPath: null, lastText: '' };
+
+  function setPill(kind, text) {
+    const dot = $('dot');
+    dot.classList.remove('ok','err');
+    if (kind === 'ok') dot.classList.add('ok');
+    if (kind === 'err') dot.classList.add('err');
+    $('pill').textContent = text;
+  }
 
   function setOut(text) {
-    state.lastText = text;
+    state.lastText = text || '';
     $('out').textContent = text || '';
   }
 
-  function setLast(path) {
-    state.lastReportPath = path;
-    $('last').textContent = path ? ('Last report: ' + path) : '';
+  function setLast(p) {
+    state.lastReportPath = p;
+    $('last').textContent = p ? ('Last report: ' + p) : '';
   }
 
   function saveLocal() {
@@ -185,13 +504,13 @@ function html() {
   }
 
   function loadLocal() {
-    $('dir').value = localStorage.getItem('freya.dir') || '';
+    $('dir').value = localStorage.getItem('freya.dir') || './freya';
     $('discord').value = localStorage.getItem('freya.discord') || '';
     $('teams').value = localStorage.getItem('freya.teams') || '';
   }
 
-  async function api(path, body) {
-    const res = await fetch(path, {
+  async function api(p, body) {
+    const res = await fetch(p, {
       method: body ? 'POST' : 'GET',
       headers: body ? { 'Content-Type': 'application/json' } : {},
       body: body ? JSON.stringify(body) : undefined
@@ -206,57 +525,111 @@ function html() {
     return d || './freya';
   }
 
+  async function pickDir() {
+    try {
+      setPill('run','opening picker…');
+      const r = await api('/api/pick-dir', {});
+      if (r && r.dir) $('dir').value = r.dir;
+      saveLocal();
+      setPill('ok','ready');
+    } catch (e) {
+      setPill('err','picker unavailable');
+      setOut(String(e && e.message ? e.message : e));
+    }
+  }
+
   async function doInit() {
-    saveLocal();
-    setOut('Running init...');
-    const r = await api('/api/init', { dir: dirOrDefault() });
-    setOut(r.output);
-    setLast(null);
+    try {
+      saveLocal();
+      setPill('run','init…');
+      setOut('');
+      const r = await api('/api/init', { dir: dirOrDefault() });
+      setOut(r.output);
+      setLast(null);
+      setPill('ok','init ok');
+    } catch (e) {
+      setPill('err','init failed');
+      setOut(String(e && e.message ? e.message : e));
+    }
   }
 
   async function doUpdate() {
-    saveLocal();
-    setOut('Running update...');
-    const r = await api('/api/update', { dir: dirOrDefault() });
-    setOut(r.output);
-    setLast(null);
+    try {
+      saveLocal();
+      setPill('run','update…');
+      setOut('');
+      const r = await api('/api/update', { dir: dirOrDefault() });
+      setOut(r.output);
+      setLast(null);
+      setPill('ok','update ok');
+    } catch (e) {
+      setPill('err','update failed');
+      setOut(String(e && e.message ? e.message : e));
+    }
   }
 
   async function doHealth() {
-    saveLocal();
-    setOut('Running health...');
-    const r = await api('/api/health', { dir: dirOrDefault() });
-    setOut(r.output);
-    setLast(null);
+    try {
+      saveLocal();
+      setPill('run','health…');
+      setOut('');
+      const r = await api('/api/health', { dir: dirOrDefault() });
+      setOut(r.output);
+      setLast(null);
+      setPill('ok','health ok');
+    } catch (e) {
+      setPill('err','health failed');
+      setOut(String(e && e.message ? e.message : e));
+    }
   }
 
   async function doMigrate() {
-    saveLocal();
-    setOut('Running migrate...');
-    const r = await api('/api/migrate', { dir: dirOrDefault() });
-    setOut(r.output);
-    setLast(null);
+    try {
+      saveLocal();
+      setPill('run','migrate…');
+      setOut('');
+      const r = await api('/api/migrate', { dir: dirOrDefault() });
+      setOut(r.output);
+      setLast(null);
+      setPill('ok','migrate ok');
+    } catch (e) {
+      setPill('err','migrate failed');
+      setOut(String(e && e.message ? e.message : e));
+    }
   }
 
   async function runReport(name) {
-    saveLocal();
-    setOut('Running ' + name + '...');
-    const r = await api('/api/report', { dir: dirOrDefault(), script: name });
-    setOut(r.output);
-    setLast(r.reportPath || null);
+    try {
+      saveLocal();
+      setPill('run', name + '…');
+      setOut('');
+      const r = await api('/api/report', { dir: dirOrDefault(), script: name });
+      setOut(r.output);
+      setLast(r.reportPath || null);
+      if (r.reportText) state.lastText = r.reportText;
+      setPill('ok', name + ' ok');
+    } catch (e) {
+      setPill('err', name + ' failed');
+      setOut(String(e && e.message ? e.message : e));
+    }
   }
 
   async function publish(target) {
-    saveLocal();
-    if (!state.lastText) throw new Error('No cached output. Generate a report first.');
-    const webhookUrl = target === 'discord' ? $('discord').value.trim() : $('teams').value.trim();
-    setOut('Publishing to ' + target + '...');
-    const r = await api('/api/publish', { webhookUrl, text: state.lastText });
-    setOut('Published.');
+    try {
+      saveLocal();
+      if (!state.lastText) throw new Error('Generate a report first.');
+      const webhookUrl = target === 'discord' ? $('discord').value.trim() : $('teams').value.trim();
+      if (!webhookUrl) throw new Error('Configure the webhook URL first.');
+      setPill('run','publishing…');
+      await api('/api/publish', { webhookUrl, text: state.lastText });
+      setPill('ok','published');
+    } catch (e) {
+      setPill('err','publish failed');
+      setOut(String(e && e.message ? e.message : e));
+    }
   }
 
   loadLocal();
-  $('status').textContent = 'ready';
 </script>
 </body>
 </html>`;
@@ -281,6 +654,11 @@ async function cmdWeb({ port, dir, open }) {
         const payload = raw ? JSON.parse(raw) : {};
 
         const workspaceDir = path.resolve(process.cwd(), payload.dir || dir || './freya');
+
+        if (req.url === '/api/pick-dir') {
+          const picked = await pickDirectoryNative();
+          return safeJson(res, 200, { dir: picked });
+        }
 
         if (req.url === '/api/init') {
           const pkg = '@cccarv82/freya';
@@ -323,8 +701,12 @@ async function cmdWeb({ port, dir, open }) {
           };
           const prefix = prefixMap[script] || null;
           const reportPath = prefix ? newestFile(reportsDir, prefix) : null;
+          const reportText = reportPath && exists(reportPath) ? fs.readFileSync(reportPath, 'utf8') : null;
 
-          return safeJson(res, r.code === 0 ? 200 : 400, { output: out, reportPath });
+          // Prefer showing the actual report content when available.
+          const output = reportText ? reportText : out;
+
+          return safeJson(res, r.code === 0 ? 200 : 400, { output, reportPath, reportText });
         }
 
         if (req.url === '/api/publish') {
@@ -348,7 +730,8 @@ async function cmdWeb({ port, dir, open }) {
             }
           };
 
-          const req2 = require(u.protocol === 'https:' ? 'https' : 'http').request(options, (r2) => {
+          const proto = u.protocol === 'https:' ? require('https') : require('http');
+          const req2 = proto.request(options, (r2) => {
             const chunks = [];
             r2.on('data', (c) => chunks.push(c));
             r2.on('end', () => {
