@@ -296,8 +296,11 @@ function buildHtml(safeDefault) {
             <div class="sideTitle">Daily Input</div>
             <textarea id="inboxText" rows="6" placeholder="Cole aqui updates do dia (status, blockers, decisões, ideias)…" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line); background: rgba(255,255,255,.72); color: var(--text); outline:none; resize: vertical;"></textarea>
             <div style="height:10px"></div>
-            <button class="btn sideBtn" onclick="saveInbox()">Save to Daily Log</button>
-            <div class="help">Isso salva o raw input em <code>logs/daily/YYYY-MM-DD.md</code> (timestamped). Depois vamos ligar o pipeline/agents.</div>
+            <div class="stack">
+              <button class="btn sideBtn" onclick="saveInbox()">Save to Daily Log</button>
+              <button class="btn primary sideBtn" onclick="saveAndPlan()">Save + Process (Agents)</button>
+            </div>
+            <div class="help">Save: só registra. Save+Process: registra e roda um planner (Copilot CLI) pra sugerir ações estruturadas.</div>
           </div>
         </aside>
 
@@ -676,6 +679,48 @@ async function cmdWeb({ port, dir, open, dev }) {
           fs.appendFileSync(file, block, 'utf8');
 
           return safeJson(res, 200, { ok: true, file: path.relative(workspaceDir, file).replace(/\\/g, '/'), appended: true });
+        }
+
+        if (req.url === '/api/agents/plan') {
+          const text = String(payload.text || '').trim();
+          if (!text) return safeJson(res, 400, { error: 'Missing text' });
+
+          // Build planner prompt from agent rules (same ones used in IDE/MCP)
+          const rulesBase = path.join(workspaceDir, '.agent', 'rules', 'freya');
+          const files = [
+            path.join(rulesBase, 'freya.mdc'),
+            path.join(rulesBase, 'agents', 'master.mdc'),
+            path.join(rulesBase, 'agents', 'ingestor.mdc'),
+            path.join(rulesBase, 'agents', 'oracle.mdc'),
+            path.join(rulesBase, 'agents', 'coach.mdc')
+          ].filter(exists);
+
+          const rulesText = files.map((p) => `\n\n---\nFILE: ${path.relative(workspaceDir, p).replace(/\\/g,'/')}\n---\n` + fs.readFileSync(p, 'utf8')).join('');
+
+          const schema = {
+            actions: [
+              { type: 'append_daily_log', text: '<string>' },
+              { type: 'create_task', description: '<string>', priority: 'HIGH|MEDIUM|LOW', category: 'DO_NOW|SCHEDULE|DELEGATE' },
+              { type: 'create_blocker', title: '<string>', severity: 'HIGH|MEDIUM|LOW', notes: '<string>' },
+              { type: 'suggest_report', name: 'daily|status|sm-weekly|blockers' },
+              { type: 'oracle_query', query: '<string>' }
+            ]
+          };
+
+          const prompt = `Você é o planner do sistema F.R.E.Y.A.\n\nContexto: vamos receber um input bruto do usuário e propor ações estruturadas.\nRegras: siga os arquivos de regras abaixo.\nSaída: retorne APENAS JSON válido no formato: ${JSON.stringify(schema)}\n\nREGRAS:${rulesText}\n\nINPUT DO USUÁRIO:\n${text}\n`;
+
+          // Prefer COPILOT_CMD if provided, otherwise try 'copilot'
+          const cmd = process.env.COPILOT_CMD || 'copilot';
+
+          // Best-effort: if command not available, return a clear message
+          try {
+            const r = await run(cmd, ['-s', '--no-color', '--stream', 'off', '-p', prompt, '--allow-all-tools'], workspaceDir);
+            const out = (r.stdout + r.stderr).trim();
+            if (r.code !== 0) return safeJson(res, 400, { error: out || 'copilot failed', output: out });
+            return safeJson(res, 200, { ok: true, plan: out });
+          } catch (e) {
+            return safeJson(res, 400, { error: `Copilot CLI not available (${cmd}). Configure COPILOT_CMD or install copilot.`, details: e.message || String(e) });
+          }
         }
 
         if (req.url === '/api/reports/open') {

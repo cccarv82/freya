@@ -427,16 +427,39 @@
         return;
       }
       setPill('run', 'saving…');
-      const r = await api('/api/inbox/add', { dir: dirOrDefault(), text });
+      await api('/api/inbox/add', { dir: dirOrDefault(), text });
       ta.value = '';
       setPill('ok', 'saved');
       setTimeout(() => setPill('ok', 'idle'), 800);
-      // Optionally refresh reports (if daily runs later, file is already there)
-      if (r && r.file) {
-        // noop
-      }
     } catch (e) {
       setPill('err', 'save failed');
+    }
+  }
+
+  async function saveAndPlan() {
+    try {
+      const ta = $('inboxText');
+      if (!ta) return;
+      const text = (ta.value || '').trim();
+      if (!text) {
+        setPill('err', 'empty');
+        return;
+      }
+
+      setPill('run', 'saving…');
+      await api('/api/inbox/add', { dir: dirOrDefault(), text });
+
+      setPill('run', 'planning…');
+      const r = await api('/api/agents/plan', { dir: dirOrDefault(), text });
+
+      // Show plan output in Preview panel
+      setOut('## Agent Plan (draft)\n\n' + (r.plan || ''));
+      ta.value = '';
+
+      setPill('ok', 'planned');
+      setTimeout(() => setPill('ok', 'idle'), 800);
+    } catch (e) {
+      setPill('err', 'plan failed');
     }
   }
 
@@ -483,4 +506,5 @@
   window.clearOut = clearOut;
   window.toggleTheme = toggleTheme;
   window.saveInbox = saveInbox;
+  window.saveAndPlan = saveAndPlan;
 })();
