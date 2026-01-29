@@ -545,9 +545,25 @@
       setOut(header + (r.plan || ''));
       ta.value = '';
 
-      if (r.ok === false) setPill('err', 'planner off');
-      else setPill('ok', 'planned');
-      setTimeout(() => setPill('ok', 'idle'), 800);
+      if (r.ok === false) {
+        setPill('err', 'planner off');
+        setTimeout(() => setPill('ok', 'idle'), 800);
+        return;
+      }
+
+      if (state.autoApply) {
+        setPill('run', 'applying…');
+        await applyPlan();
+        const a = state.lastApplied || {};
+        setPill('ok', `applied (${a.tasks || 0}t, ${a.blockers || 0}b)`);
+        if (state.autoRunReports) {
+          await runSuggestedReports();
+        }
+      } else {
+        setPill('ok', 'planned');
+      }
+
+      setTimeout(() => setPill('ok', 'idle'), 1200);
     } catch (e) {
       setPill('err', 'plan failed');
     }
