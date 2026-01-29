@@ -399,10 +399,11 @@ function buildHtml(safeDefault) {
           <div class="sideGroup">
             <div class="sideTitle">Workspace</div>
             <button class="btn sideBtn" onclick="pickDir()">Select workspace…</button>
-            <button class="btn sideBtn" onclick="doUpdate()">Update (preserve data/logs)</button>
-            <button class="btn sideBtn" onclick="doMigrate()">Migrate</button>
+            <button class="btn sideBtn" onclick="doUpdate()">Sync workspace</button>
+            <button class="btn sideBtn" onclick="doMigrate()">Migrate data</button>
             <div style="height:10px"></div>
-            <div class="help">Dica: se você já tem uma workspace antiga, use Update. Por padrão, data/logs não são sobrescritos.</div>
+            <div class="help"><b>Sync workspace</b>: atualiza scripts/templates/agents na pasta <code>freya</code> sem sobrescrever <code>data/</code> e <code>logs/</code>.</div>
+            <div class="help"><b>Migrate data</b>: ajusta formatos/schemaVersion quando uma versão nova exige.</div>
           </div>
 
           <div class="sideGroup">
@@ -837,7 +838,7 @@ async function cmdWeb({ port, dir, open, dev }) {
             ]
           };
 
-          const prompt = `Você é o planner do sistema F.R.E.Y.A.\n\nContexto: vamos receber um input bruto do usuário e propor ações estruturadas.\nRegras: siga os arquivos de regras abaixo.\nSaída: retorne APENAS JSON válido no formato: ${JSON.stringify(schema)}\n\nREGRAS:${rulesText}\n\nINPUT DO USUÁRIO:\n${text}\n`;
+          const prompt = `Você é o planner do sistema F.R.E.Y.A.\n\nContexto: vamos receber um input bruto do usuário e propor ações estruturadas.\nRegras: siga os arquivos de regras abaixo.\nSaída: retorne APENAS JSON válido no formato: ${JSON.stringify(schema)}\n\nRestrições:\n- NÃO use code fences (\`\`\`)\n- NÃO inclua texto extra antes/depois do JSON\n- NÃO use quebras de linha dentro de strings (transforme em uma frase única)\n\nREGRAS:${rulesText}\n\nINPUT DO USUÁRIO:\n${text}\n`;
 
           // Prefer COPILOT_CMD if provided, otherwise try 'copilot'
           const cmd = process.env.COPILOT_CMD || 'copilot';
@@ -966,15 +967,35 @@ async function cmdWeb({ port, dir, open, dev }) {
           }
 
           const jsonText = extractJson(planRaw) || planRaw;
+
+          function errorSnippet(text, pos) {
+            const p = Number.isFinite(pos) ? pos : 0;
+            const start = Math.max(0, p - 60);
+            const end = Math.min(text.length, p + 60);
+            const slice = text.slice(start, end);
+            const codes = Array.from(slice).map((ch) => ch.charCodeAt(0));
+            return { start, end, slice, codes };
+          }
+
           let plan;
           try {
             plan = JSON.parse(jsonText);
           } catch (e) {
-            return safeJson(res, 400, {
-              error: 'Plan is not valid JSON',
-              details: (e && e.message) ? e.message : String(e),
-              hint: 'O planner precisa retornar APENAS JSON. Se vier com texto extra, revise o prompt ou use apenas o bloco JSON.'
-            });
+            // Attempt repair for common control-character issues
+            try {
+              plan = JSON.parse(escapeJsonControlChars(jsonText));
+            } catch (e2) {
+              return safeJson(res, 400, {
+                error: 'Plan is not valid JSON',
+                details: (e2 && e2.message) ? e2.message : ((e && e.message) ? e.message : String(e)),
+                hint: 'O planner gerou caracteres de controle dentro de strings (ex.: quebra de linha literal). Reexecute o planner; ou escape quebras de linha como \\n.',
+                snippet: (() => {
+                  const m2 = /position (\d+)/.exec(((e2 && e2.message) ? e2.message : ((e && e.message) ? e.message : '')));
+                  const pos = m2 ? Number(m2[1]) : NaN;
+                  return errorSnippet(jsonText, pos);
+                })()
+              });
+            }
           }
 
           const actions = Array.isArray(plan.actions) ? plan.actions : [];
@@ -994,7 +1015,7 @@ async function cmdWeb({ port, dir, open, dev }) {
           if (typeof blockerLog.schemaVersion !== 'number') blockerLog.schemaVersion = 1;
 
           function normalizeTextForKey(t) {
-            return String(t || '').toLowerCase().replace(/s+/g, ' ').trim();
+            return String(t || '').toLowerCase().replace(/\s+/g, ' ').trim();
           }
 
           function sha1(text) {
