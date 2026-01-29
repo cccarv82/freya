@@ -4,7 +4,7 @@
 
 (function () {
   const $ = (id) => document.getElementById(id);
-  const state = { lastReportPath: null, lastText: '', reports: [], selectedReport: null, lastPlan: '', lastApplied: null, autoApply: true };
+  undefined
 
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
@@ -188,6 +188,7 @@
   function saveLocal() {
     localStorage.setItem('freya.dir', $('dir').value);
     try { localStorage.setItem('freya.autoApply', state.autoApply ? '1' : '0'); } catch {}
+    try { localStorage.setItem('freya.autoRunReports', state.autoRunReports ? '1' : '0'); } catch {}
   }
 
   function loadLocal() {
@@ -196,6 +197,11 @@
       if (v !== null) state.autoApply = v === '1';
       const cb = $('autoApply');
       if (cb) cb.checked = !!state.autoApply;
+
+      const v2 = localStorage.getItem('freya.autoRunReports');
+      if (v2 !== null) state.autoRunReports = v2 === '1';
+      const cb2 = $('autoRunReports');
+      if (cb2) cb2.checked = !!state.autoRunReports;
     } catch {}
 
     const def = (window.__FREYA_DEFAULT_DIR && window.__FREYA_DEFAULT_DIR !== '__FREYA_DEFAULT_DIR__')
@@ -451,6 +457,12 @@
     }
   }
 
+  function toggleAutoRunReports() {
+    const cb = $('autoRunReports');
+    state.autoRunReports = cb ? !!cb.checked : false;
+    try { localStorage.setItem('freya.autoRunReports', state.autoRunReports ? '1' : '0'); } catch {}
+  }
+
   function toggleAutoApply() {
     const cb = $('autoApply');
     state.autoApply = cb ? !!cb.checked : true;
@@ -609,6 +621,7 @@
   window.saveInbox = saveInbox;
   window.saveAndPlan = saveAndPlan;
   window.toggleAutoApply = toggleAutoApply;
+  window.toggleAutoRunReports = toggleAutoRunReports;
   window.applyPlan = applyPlan;
   window.runSuggestedReports = runSuggestedReports;
 })();
