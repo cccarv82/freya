@@ -152,7 +152,7 @@ async function pickDirectoryNative() {
 }
 
 function html() {
-  // Aesthetic: “Noir control room” — dark glass, crisp typography, intentional hierarchy.
+  // Aesthetic: “clean workstation” — light-first UI inspired by modern productivity apps.
   return `<!doctype html>
 <html>
 <head>
@@ -160,336 +160,551 @@ function html() {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>FREYA Web</title>
   <style>
+    /*
+      Design goals:
+      - Light theme by default (inspired by your reference screenshots)
+      - Dark mode toggle
+      - App-like layout: sidebar + main surface
+      - Clear onboarding and affordances
+    */
+
     :root {
-      --bg: #070a10;
-      --bg2: #0a1020;
-      --panel: rgba(255,255,255,.04);
-      --panel2: rgba(255,255,255,.06);
-      --line: rgba(180,210,255,.16);
+      --radius: 14px;
+      --shadow: 0 18px 55px rgba(16, 24, 40, .10);
+      --shadow2: 0 10px 20px rgba(16, 24, 40, .08);
+      --ring: 0 0 0 4px rgba(59, 130, 246, .18);
+
+      /* Light */
+      --bg: #f6f7fb;
+      --paper: #ffffff;
+      --paper2: #fbfbfd;
+      --line: rgba(16, 24, 40, .10);
+      --line2: rgba(16, 24, 40, .14);
+      --text: #0f172a;
+      --muted: rgba(15, 23, 42, .68);
+      --faint: rgba(15, 23, 42, .50);
+
+      --primary: #2563eb;
+      --primary2: #0ea5e9;
+      --accent: #f97316;
+      --ok: #16a34a;
+      --warn: #f59e0b;
+      --danger: #e11d48;
+
+      --chip: rgba(37, 99, 235, .08);
+      --chip2: rgba(249, 115, 22, .10);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+    }
+
+    [data-theme="dark"] {
+      --bg: #0b1020;
+      --paper: rgba(255,255,255,.06);
+      --paper2: rgba(255,255,255,.04);
+      --line: rgba(255,255,255,.12);
+      --line2: rgba(255,255,255,.18);
       --text: #e9f0ff;
       --muted: rgba(233,240,255,.72);
-      --faint: rgba(233,240,255,.52);
-      --accent: #5eead4;
-      --accent2: #60a5fa;
-      --danger: #fb7185;
-      --ok: #34d399;
-      --warn: #fbbf24;
+      --faint: rgba(233,240,255,.54);
+
+      --primary: #60a5fa;
+      --primary2: #22c55e;
+      --accent: #fb923c;
+      --chip: rgba(96, 165, 250, .14);
+      --chip2: rgba(251, 146, 60, .14);
+
       --shadow: 0 30px 70px rgba(0,0,0,.55);
-      --radius: 16px;
+      --shadow2: 0 18px 40px rgba(0,0,0,.35);
+      --ring: 0 0 0 4px rgba(96, 165, 250, .22);
     }
 
     * { box-sizing: border-box; }
     html, body { height: 100%; }
     body {
       margin: 0;
-      color: var(--text);
       background:
-        radial-gradient(900px 560px at 18% 12%, rgba(94,234,212,.14), transparent 60%),
-        radial-gradient(820px 540px at 72% 6%, rgba(96,165,250,.14), transparent 60%),
-        radial-gradient(900px 700px at 70% 78%, rgba(251,113,133,.08), transparent 60%),
-        linear-gradient(180deg, var(--bg), var(--bg2));
-      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial;
-      overflow-x: hidden;
+        radial-gradient(1200px 800px at 20% -10%, rgba(37,99,235,.12), transparent 55%),
+        radial-gradient(900px 600px at 92% 10%, rgba(249,115,22,.12), transparent 55%),
+        radial-gradient(1100px 700px at 70% 105%, rgba(14,165,233,.10), transparent 55%),
+        var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
     }
 
-    /* subtle noise */
+    /* subtle grain */
     body:before {
       content: "";
       position: fixed;
       inset: 0;
       pointer-events: none;
       background-image:
-        linear-gradient(transparent 0, transparent 2px, rgba(255,255,255,.02) 3px),
-        radial-gradient(circle at 10% 10%, rgba(255,255,255,.06), transparent 35%),
-        radial-gradient(circle at 90% 30%, rgba(255,255,255,.04), transparent 35%);
-      background-size: 100% 6px, 900px 900px, 900px 900px;
+        radial-gradient(circle at 15% 20%, rgba(255,255,255,.38), transparent 32%),
+        radial-gradient(circle at 80% 10%, rgba(255,255,255,.26), transparent 38%),
+        linear-gradient(transparent 0, transparent 3px, rgba(0,0,0,.02) 4px);
+      background-size: 900px 900px, 900px 900px, 100% 7px;
+      opacity: .08;
       mix-blend-mode: overlay;
-      opacity: .12;
     }
 
-    header {
+    .app {
+      max-width: 1260px;
+      margin: 18px auto;
+      padding: 0 18px;
+    }
+
+    .frame {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 14px;
+      min-height: calc(100vh - 36px);
+    }
+
+    @media (max-width: 980px) {
+      .frame { grid-template-columns: 1fr; }
+    }
+
+    .sidebar {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow2);
+      padding: 14px;
       position: sticky;
-      top: 0;
-      z-index: 10;
-      backdrop-filter: blur(14px);
-      background: rgba(7,10,16,.56);
-      border-bottom: 1px solid var(--line);
+      top: 18px;
+      height: fit-content;
     }
 
-    .top {
-      max-width: 1140px;
-      margin: 0 auto;
-      padding: 14px 18px;
+    .main {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .topbar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, var(--paper2), var(--paper));
     }
 
     .brand {
       display: flex;
-      align-items: baseline;
-      gap: 12px;
-      letter-spacing: .16em;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      letter-spacing: .08em;
       text-transform: uppercase;
-      font-weight: 700;
       font-size: 12px;
       color: var(--muted);
     }
 
-    .badge {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    .spark {
+      width: 10px;
+      height: 10px;
+      border-radius: 4px;
+      background: linear-gradient(135deg, var(--accent), var(--primary));
+      box-shadow: 0 0 0 6px rgba(249,115,22,.12);
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .chip {
+      font-family: var(--mono);
       font-size: 12px;
-      padding: 6px 10px;
+      padding: 7px 10px;
       border-radius: 999px;
       border: 1px solid var(--line);
-      background: rgba(255,255,255,.03);
+      background: rgba(255,255,255,.55);
       color: var(--faint);
     }
 
-    .wrap {
-      max-width: 1140px;
-      margin: 0 auto;
-      padding: 18px;
+    [data-theme="dark"] .chip { background: rgba(0,0,0,.20); }
+
+    .toggle {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--paper2);
+      padding: 7px 10px;
+      cursor: pointer;
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 12px;
     }
 
-    .hero {
+    .section {
+      padding: 16px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 22px;
+      letter-spacing: -.02em;
+    }
+
+    .subtitle {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+      max-width: 860px;
+    }
+
+    .cards {
       display: grid;
-      grid-template-columns: 1.2fr .8fr;
-      gap: 16px;
-      align-items: start;
-      margin-bottom: 16px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 14px;
     }
 
-    @media (max-width: 980px) {
-      .hero { grid-template-columns: 1fr; }
-    }
+    @media (max-width: 1100px) { .cards { grid-template-columns: repeat(2, 1fr);} }
+    @media (max-width: 620px) { .cards { grid-template-columns: 1fr;} }
 
     .card {
       border: 1px solid var(--line);
-      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 14px;
-      position: relative;
-      overflow: hidden;
+      background: var(--paper2);
+      border-radius: 14px;
+      padding: 12px;
+      display: grid;
+      gap: 6px;
+      cursor: pointer;
+      transition: transform .10s ease, border-color .16s ease, box-shadow .16s ease;
+      box-shadow: 0 1px 0 rgba(16,24,40,.04);
     }
 
-    .card:before {
-      content: "";
-      position: absolute;
-      inset: -2px;
-      background:
-        radial-gradient(900px 220px at 25% 0%, rgba(94,234,212,.12), transparent 60%),
-        radial-gradient(900px 220px at 90% 30%, rgba(96,165,250,.10), transparent 60%);
-      opacity: .55;
-      pointer-events: none;
+    .card:hover {
+      transform: translateY(-1px);
+      border-color: var(--line2);
+      box-shadow: 0 10px 22px rgba(16,24,40,.10);
     }
 
-    .card > * { position: relative; }
+    .icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: var(--chip);
+      border: 1px solid var(--line);
+      color: var(--primary);
+      font-weight: 900;
+    }
 
-    h2 {
-      margin: 0 0 8px;
-      font-size: 14px;
-      letter-spacing: .08em;
-      text-transform: uppercase;
+    .icon.orange { background: var(--chip2); color: var(--accent); }
+
+    .title {
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .desc {
       color: var(--muted);
-    }
-
-    .sub {
-      margin: 0 0 10px;
       font-size: 12px;
-      color: var(--faint);
       line-height: 1.35;
     }
 
-    label {
-      display: block;
-      font-size: 12px;
-      color: var(--muted);
-      margin-bottom: 6px;
+    .grid2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 14px;
     }
 
-    .field {
+    @media (max-width: 980px) { .grid2 { grid-template-columns: 1fr; } }
+
+    .panel {
+      border: 1px solid var(--line);
+      background: var(--paper);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+
+    .panelHead {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 12px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, var(--paper2), var(--paper));
+    }
+
+    .panelHead b { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+
+    .panelBody { padding: 12px; }
+
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+
+    input {
+      width: 100%;
+      padding: 11px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.72);
+      color: var(--text);
+      outline: none;
+    }
+
+    [data-theme="dark"] input { background: rgba(0,0,0,.16); }
+
+    input:focus { box-shadow: var(--ring); border-color: rgba(37,99,235,.35); }
+
+    .row {
       display: grid;
       grid-template-columns: 1fr auto;
       gap: 10px;
       align-items: center;
     }
 
-    input {
-      width: 100%;
-      padding: 12px 12px;
+    .btn {
+      border: 1px solid var(--line);
       border-radius: 12px;
-      border: 1px solid rgba(180,210,255,.22);
-      background: rgba(7,10,16,.55);
-      color: var(--text);
-      outline: none;
-    }
-
-    input::placeholder { color: rgba(233,240,255,.38); }
-
-    .btns {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 10px;
-    }
-
-    button {
-      border: 1px solid rgba(180,210,255,.22);
-      border-radius: 12px;
-      background: rgba(255,255,255,.04);
+      background: var(--paper2);
       color: var(--text);
       padding: 10px 12px;
       cursor: pointer;
-      transition: transform .08s ease, background .16s ease, border-color .16s ease;
-      font-weight: 600;
-      letter-spacing: .01em;
+      font-weight: 800;
+      font-size: 12px;
+      transition: transform .10s ease, border-color .16s ease, box-shadow .16s ease;
     }
 
-    button:hover { transform: translateY(-1px); background: rgba(255,255,255,.06); border-color: rgba(180,210,255,.32); }
-    button:active { transform: translateY(0); }
+    .btn:hover { transform: translateY(-1px); border-color: var(--line2); box-shadow: 0 10px 22px rgba(16,24,40,.10); }
+    .btn:active { transform: translateY(0); }
 
-    .primary {
-      background: linear-gradient(135deg, rgba(94,234,212,.18), rgba(96,165,250,.16));
-      border-color: rgba(94,234,212,.28);
+    .btn.primary {
+      background: linear-gradient(135deg, rgba(37,99,235,.14), rgba(14,165,233,.12));
+      border-color: rgba(37,99,235,.22);
+      color: var(--text);
     }
 
-    .ghost { background: rgba(255,255,255,.02); }
+    .btn.orange {
+      background: linear-gradient(135deg, rgba(249,115,22,.16), rgba(37,99,235,.08));
+      border-color: rgba(249,115,22,.24);
+    }
 
-    .danger { border-color: rgba(251,113,133,.45); background: rgba(251,113,133,.12); }
+    .btn.danger {
+      background: rgba(225,29,72,.10);
+      border-color: rgba(225,29,72,.28);
+      color: var(--text);
+    }
+
+    .btn.small { padding: 9px 10px; font-weight: 800; }
+
+    .stack { display: flex; flex-wrap: wrap; gap: 10px; }
+
+    .help {
+      margin-top: 8px;
+      color: var(--faint);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .log {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.65);
+      border-radius: 14px;
+      padding: 12px;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.35;
+      white-space: pre-wrap;
+      max-height: 420px;
+      overflow: auto;
+      color: rgba(15,23,42,.92);
+    }
+
+    [data-theme="dark"] .log { background: rgba(0,0,0,.20); color: rgba(233,240,255,.84); }
+
+    .statusRow { display:flex; align-items:center; justify-content: space-between; gap: 10px; }
 
     .pill {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 8px 10px;
+      padding: 7px 10px;
       border-radius: 999px;
-      border: 1px solid rgba(180,210,255,.18);
-      background: rgba(0,0,0,.18);
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.55);
+      font-size: 12px;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+
+    [data-theme="dark"] .pill { background: rgba(0,0,0,.18); }
+
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 5px rgba(245,158,11,.15); }
+    .dot.ok { background: var(--ok); box-shadow: 0 0 0 5px rgba(22,163,74,.12); }
+    .dot.err { background: var(--danger); box-shadow: 0 0 0 5px rgba(225,29,72,.14); }
+
+    .small {
       font-size: 12px;
       color: var(--faint);
+      font-family: var(--mono);
     }
 
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 5px rgba(251,191,36,.14); }
-    .dot.ok { background: var(--ok); box-shadow: 0 0 0 5px rgba(52,211,153,.12); }
-    .dot.err { background: var(--danger); box-shadow: 0 0 0 5px rgba(251,113,133,.12); }
-
-    .two {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-    @media (max-width: 980px) { .two { grid-template-columns: 1fr; } }
-
-    .hr { height: 1px; background: rgba(180,210,255,.14); margin: 12px 0; }
-
-    .log {
-      border-radius: 14px;
-      border: 1px solid rgba(180,210,255,.18);
-      background: rgba(7,10,16,.55);
-      padding: 12px;
-      min-height: 220px;
-      max-height: 420px;
-      overflow: auto;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    .sidebar h3 {
+      margin: 0;
       font-size: 12px;
-      line-height: 1.35;
-      white-space: pre-wrap;
-      color: rgba(233,240,255,.84);
+      letter-spacing: .10em;
+      text-transform: uppercase;
+      color: var(--muted);
     }
 
-    .hint {
+    .sideBlock { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line); }
+
+    .sidePath {
+      margin-top: 8px;
+      border: 1px solid var(--line);
+      background: var(--paper2);
+      border-radius: 12px;
+      padding: 10px;
+      font-family: var(--mono);
       font-size: 12px;
-      color: var(--faint);
-      margin-top: 6px;
-      line-height: 1.35;
+      color: var(--muted);
+      word-break: break-word;
     }
 
-    .footer {
-      margin-top: 12px;
-      font-size: 12px;
-      color: rgba(233,240,255,.45);
-    }
+    .sideBtn { width: 100%; margin-top: 8px; }
 
-    a { color: var(--accent2); text-decoration: none; }
-    a:hover { text-decoration: underline; }
+    .k { display: inline-block; padding: 2px 6px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.65); font-family: var(--mono); font-size: 12px; color: var(--muted); }
+    [data-theme="dark"] .k { background: rgba(0,0,0,.18); }
+
   </style>
 </head>
 <body>
-  <header>
-    <div class="top">
-      <div class="brand">FREYA <span style="opacity:.55">•</span> web console</div>
-      <div class="badge" id="status">ready</div>
-    </div>
-  </header>
+  <div class="app">
+    <div class="frame">
 
-  <div class="wrap">
-    <div class="hero">
-      <div class="card">
-        <h2>1) Workspace</h2>
-        <p class="sub">Escolha onde está (ou onde será criada) sua workspace da FREYA. Se você já tem uma workspace antiga, use <b>Update</b> — seus <b>data/logs</b> ficam preservados.</p>
-
-        <label>Workspace dir</label>
-        <div class="field">
-          <input id="dir" placeholder="./freya" />
-          <button class="ghost" onclick="pickDir()">Browse…</button>
-        </div>
-        <div class="hint">Dica: a workspace contém <code>data/</code>, <code>logs/</code> e <code>scripts/</code>.</div>
-
-        <div class="btns">
-          <button class="primary" onclick="doInit()">Init</button>
-          <button onclick="doUpdate()">Update</button>
-          <button onclick="doHealth()">Health</button>
-          <button onclick="doMigrate()">Migrate</button>
+      <aside class="sidebar">
+        <div style="display:flex; align-items:center; justify-content: space-between; gap:10px;">
+          <h3>FREYA</h3>
+          <span class="pill"><span class="dot" id="dot"></span><span id="pill">idle</span></span>
         </div>
 
-        <div class="footer">Atalho: <code>freya web --dir ./freya</code> (porta padrão 3872).</div>
-      </div>
-
-      <div class="card">
-        <h2>2) Publish</h2>
-        <p class="sub">Configure webhooks (opcional) para publicar relatórios com 1 clique. Ideal para mandar status no Teams/Discord.</p>
-
-        <label>Discord webhook URL</label>
-        <input id="discord" placeholder="https://discord.com/api/webhooks/..." />
-
-        <div style="height:10px"></div>
-        <label>Teams webhook URL</label>
-        <input id="teams" placeholder="https://..." />
-
-        <div class="hr"></div>
-        <div class="btns">
-          <button onclick="publish('discord')">Publish last → Discord</button>
-          <button onclick="publish('teams')">Publish last → Teams</button>
-        </div>
-        <div class="hint">O publish usa o texto do último relatório gerado. Para MVP, limitamos em ~1800 caracteres (evita limites de webhook). Depois a gente melhora para anexos/chunks.</div>
-      </div>
-    </div>
-
-    <div class="two">
-      <div class="card">
-        <h2>3) Generate</h2>
-        <p class="sub">Gere relatórios e use o preview/log abaixo para validar. Depois, publique ou copie.</p>
-
-        <div class="btns">
-          <button class="primary" onclick="runReport('status')">Executive</button>
-          <button class="primary" onclick="runReport('sm-weekly')">SM Weekly</button>
-          <button class="primary" onclick="runReport('blockers')">Blockers</button>
-          <button class="ghost" onclick="runReport('daily')">Daily</button>
+        <div class="sideBlock">
+          <h3>Workspace</h3>
+          <div class="sidePath" id="sidePath">./freya</div>
+          <button class="btn sideBtn" onclick="pickDir()">Select workspace…</button>
+          <button class="btn primary sideBtn" onclick="doInit()">Init workspace</button>
+          <button class="btn sideBtn" onclick="doUpdate()">Update (preserve data/logs)</button>
+          <button class="btn sideBtn" onclick="doHealth()">Health</button>
+          <button class="btn sideBtn" onclick="doMigrate()">Migrate</button>
+          <div class="help">Dica: se você já tem uma workspace antiga, use <b>Update</b>. Por padrão, <b>data/</b> e <b>logs/</b> não são sobrescritos.</div>
         </div>
 
-        <div class="hint" id="last"></div>
-      </div>
+        <div class="sideBlock">
+          <h3>Publish</h3>
+          <button class="btn sideBtn" onclick="publish('discord')">Publish → Discord</button>
+          <button class="btn sideBtn" onclick="publish('teams')">Publish → Teams</button>
+          <div class="help">Configure os webhooks no painel principal. O publish envia o último relatório gerado.</div>
+        </div>
 
-      <div class="card">
-        <h2>Output</h2>
-        <div class="pill"><span class="dot" id="dot"></span><span id="pill">idle</span></div>
-        <div style="height:10px"></div>
-        <div class="log" id="out"></div>
-        <div class="footer">Dica: se o report foi salvo em arquivo, ele aparece em “Last report”.</div>
-      </div>
+        <div class="sideBlock">
+          <h3>Atalhos</h3>
+          <div class="help"><span class="k">--dev</span> cria dados de exemplo para testar rápido.</div>
+          <div class="help"><span class="k">--port</span> muda a porta (default 3872).</div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="topbar">
+          <div class="brand"><span class="spark"></span> Local-first status assistant</div>
+          <div class="actions">
+            <span class="chip" id="chipPort">127.0.0.1:3872</span>
+            <button class="toggle" id="themeToggle" onclick="toggleTheme()">Theme</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <h1>Morning, how can I help?</h1>
+          <div class="subtitle">Selecione uma workspace e gere relatórios (Executive / SM / Blockers / Daily). Você pode publicar no Discord/Teams com 1 clique.</div>
+
+          <div class="cards">
+            <div class="card" onclick="runReport('status')">
+              <div class="icon">E</div>
+              <div class="title">Executive report</div>
+              <div class="desc">Status pronto para stakeholders (entregas, projetos, blockers).</div>
+            </div>
+            <div class="card" onclick="runReport('sm-weekly')">
+              <div class="icon">S</div>
+              <div class="title">SM weekly</div>
+              <div class="desc">Resumo, wins, riscos e foco da próxima semana.</div>
+            </div>
+            <div class="card" onclick="runReport('blockers')">
+              <div class="icon orange">B</div>
+              <div class="title">Blockers</div>
+              <div class="desc">Lista priorizada por severidade + idade (pra destravar rápido).</div>
+            </div>
+            <div class="card" onclick="runReport('daily')">
+              <div class="icon">D</div>
+              <div class="title">Daily</div>
+              <div class="desc">Ontem / Hoje / Bloqueios — pronto pra standup.</div>
+            </div>
+          </div>
+
+          <div class="grid2">
+            <div class="panel">
+              <div class="panelHead"><b>Workspace & publish settings</b><span class="small" id="last"></span></div>
+              <div class="panelBody">
+                <label>Workspace dir</label>
+                <div class="row">
+                  <input id="dir" placeholder="./freya" />
+                  <button class="btn small" onclick="pickDir()">Browse</button>
+                </div>
+                <div class="help">Escolha a pasta que contém <code>data/</code>, <code>logs/</code> e <code>scripts/</code>.</div>
+
+                <div style="height:12px"></div>
+
+                <div class="stack">
+                  <button class="btn primary" onclick="doInit()">Init</button>
+                  <button class="btn" onclick="doUpdate()">Update</button>
+                  <button class="btn" onclick="doHealth()">Health</button>
+                  <button class="btn" onclick="doMigrate()">Migrate</button>
+                </div>
+
+                <div style="height:16px"></div>
+
+                <label>Discord webhook URL</label>
+                <input id="discord" placeholder="https://discord.com/api/webhooks/..." />
+                <div style="height:10px"></div>
+
+                <label>Teams webhook URL</label>
+                <input id="teams" placeholder="https://..." />
+                <div class="help">O publish usa incoming webhooks. (Depois a gente evolui para anexos/chunks.)</div>
+
+                <div style="height:10px"></div>
+                <div class="stack">
+                  <button class="btn" onclick="publish('discord')">Publish last → Discord</button>
+                  <button class="btn" onclick="publish('teams')">Publish last → Teams</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel">
+              <div class="panelHead">
+                <b>Output</b>
+                <div class="stack">
+                  <button class="btn small" onclick="copyOut()">Copy</button>
+                  <button class="btn small" onclick="clearOut()">Clear</button>
+                </div>
+              </div>
+              <div class="panelBody">
+                <div class="log" id="out"></div>
+                <div class="help">Dica: quando um report gera arquivo, mostramos o conteúdo real do report aqui (melhor que stdout).</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </main>
+
     </div>
   </div>
 
@@ -497,17 +712,44 @@ function html() {
   const $ = (id) => document.getElementById(id);
   const state = { lastReportPath: null, lastText: '' };
 
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('freya.theme', theme);
+    $('themeToggle').textContent = theme === 'dark' ? 'Light' : 'Dark';
+  }
+
+  function toggleTheme() {
+    const t = localStorage.getItem('freya.theme') || 'light';
+    applyTheme(t === 'dark' ? 'light' : 'dark');
+  }
+
   function setPill(kind, text) {
     const dot = $('dot');
     dot.classList.remove('ok','err');
     if (kind === 'ok') dot.classList.add('ok');
     if (kind === 'err') dot.classList.add('err');
     $('pill').textContent = text;
+    $('status') && ($('status').textContent = text);
   }
 
   function setOut(text) {
     state.lastText = text || '';
     $('out').textContent = text || '';
+  }
+
+  function clearOut() {
+    setOut('');
+    setPill('ok', 'idle');
+  }
+
+  async function copyOut() {
+    try {
+      await navigator.clipboard.writeText(state.lastText || '');
+      setPill('ok','copied');
+      setTimeout(() => setPill('ok','idle'), 800);
+    } catch (e) {
+      setPill('err','copy failed');
+    }
   }
 
   function setLast(p) {
@@ -525,6 +767,7 @@ function html() {
     $('dir').value = localStorage.getItem('freya.dir') || './freya';
     $('discord').value = localStorage.getItem('freya.discord') || '';
     $('teams').value = localStorage.getItem('freya.teams') || '';
+    $('sidePath').textContent = $('dir').value || './freya';
   }
 
   async function api(p, body) {
@@ -545,13 +788,16 @@ function html() {
 
   async function pickDir() {
     try {
-      setPill('run','opening picker…');
+      setPill('run','picker…');
       const r = await api('/api/pick-dir', {});
-      if (r && r.dir) $('dir').value = r.dir;
+      if (r && r.dir) {
+        $('dir').value = r.dir;
+        $('sidePath').textContent = r.dir;
+      }
       saveLocal();
       setPill('ok','ready');
     } catch (e) {
-      setPill('err','picker unavailable');
+      setPill('err','picker failed');
       setOut(String(e && e.message ? e.message : e));
     }
   }
@@ -559,6 +805,7 @@ function html() {
   async function doInit() {
     try {
       saveLocal();
+      $('sidePath').textContent = dirOrDefault();
       setPill('run','init…');
       setOut('');
       const r = await api('/api/init', { dir: dirOrDefault() });
@@ -574,6 +821,7 @@ function html() {
   async function doUpdate() {
     try {
       saveLocal();
+      $('sidePath').textContent = dirOrDefault();
       setPill('run','update…');
       setOut('');
       const r = await api('/api/update', { dir: dirOrDefault() });
@@ -589,6 +837,7 @@ function html() {
   async function doHealth() {
     try {
       saveLocal();
+      $('sidePath').textContent = dirOrDefault();
       setPill('run','health…');
       setOut('');
       const r = await api('/api/health', { dir: dirOrDefault() });
@@ -604,6 +853,7 @@ function html() {
   async function doMigrate() {
     try {
       saveLocal();
+      $('sidePath').textContent = dirOrDefault();
       setPill('run','migrate…');
       setOut('');
       const r = await api('/api/migrate', { dir: dirOrDefault() });
@@ -619,6 +869,7 @@ function html() {
   async function runReport(name) {
     try {
       saveLocal();
+      $('sidePath').textContent = dirOrDefault();
       setPill('run', name + '…');
       setOut('');
       const r = await api('/api/report', { dir: dirOrDefault(), script: name });
@@ -635,10 +886,10 @@ function html() {
   async function publish(target) {
     try {
       saveLocal();
-      if (!state.lastText) throw new Error('Generate a report first.');
+      if (!state.lastText) throw new Error('Gere um relatório primeiro.');
       const webhookUrl = target === 'discord' ? $('discord').value.trim() : $('teams').value.trim();
-      if (!webhookUrl) throw new Error('Configure the webhook URL first.');
-      setPill('run','publishing…');
+      if (!webhookUrl) throw new Error('Configure o webhook antes.');
+      setPill('run','publish…');
       await api('/api/publish', { webhookUrl, text: state.lastText });
       setPill('ok','published');
     } catch (e) {
@@ -647,7 +898,11 @@ function html() {
     }
   }
 
+  // init
+  applyTheme(localStorage.getItem('freya.theme') || 'light');
+  $('chipPort').textContent = location.host;
   loadLocal();
+  setPill('ok','idle');
 </script>
 </body>
 </html>`;
