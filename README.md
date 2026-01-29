@@ -58,6 +58,23 @@ freya init meu-projeto  # cria ./meu-projeto
 freya init --here       # instala no diretório atual
 ```
 
+### Atualizar uma workspace existente (sem perder dados)
+Por padrão, ao rodar `init` em uma pasta existente, o CLI **preserva**:
+- `data/**`
+- `logs/**`
+
+E atualiza/instala normalmente:
+- `.agent/**`
+- `scripts/**`
+- `README.md`, `USER_GUIDE.md`
+- `package.json` (merge de scripts)
+
+Flags (use com cuidado):
+```bash
+freya init --here --force-data   # permite sobrescrever data/
+freya init --here --force-logs   # permite sobrescrever logs/
+```
+
 ## 🚀 Como Usar
 
 1.  Abra a pasta da workspace gerada (ex.: `./freya`) na **sua IDE**.
