@@ -9,15 +9,18 @@ function usage() {
 freya - F.R.E.Y.A. CLI
 
 Usage:
-  freya init [dir] [--force] [--here|--in-place]
+  freya init [dir] [--force] [--here|--in-place] [--force-data] [--force-logs]
 
 Defaults:
   - If no [dir] is provided, creates ./freya
+  - Preserves existing data/ and logs/ by default
 
 Examples:
   freya init              # creates ./freya
   freya init my-workspace # creates ./my-workspace
   freya init --here       # installs into current directory
+  freya init --here --force          # update agents/scripts, keep data/logs
+  freya init --here --force-data     # overwrite data/ too (danger)
   npx @cccarv82/freya init
 `;
 }
@@ -49,8 +52,12 @@ async function run(argv) {
     const targetDir = args[1]
       ? path.resolve(process.cwd(), args[1])
       : (inPlace ? process.cwd() : defaultDir);
+
     const force = flags.has('--force');
-    await cmdInit({ targetDir, force });
+    const forceData = flags.has('--force-data');
+    const forceLogs = flags.has('--force-logs');
+
+    await cmdInit({ targetDir, force, forceData, forceLogs });
     return;
   }
 
