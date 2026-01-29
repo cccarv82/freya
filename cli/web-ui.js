@@ -4,7 +4,7 @@
 
 (function () {
   const $ = (id) => document.getElementById(id);
-  const state = { lastReportPath: null, lastText: '', reports: [], selectedReport: null, lastPlan: '' };
+  const state = { lastReportPath: null, lastText: '', reports: [], selectedReport: null, lastPlan: '', lastApplied: null };
 
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
@@ -465,6 +465,40 @@
     }
   }
 
+  async function runSuggestedReports() {
+    try {
+      const suggested = state.lastApplied && Array.isArray(state.lastApplied.reportsSuggested)
+        ? state.lastApplied.reportsSuggested
+        : [];
+      if (!suggested.length) {
+        setPill('err', 'no suggestions');
+        return;
+      }
+
+      // Dedup + allowlist
+      const allow = new Set(['daily', 'status', 'sm-weekly', 'blockers']);
+      const uniq = Array.from(new Set(suggested.map((s) => String(s).trim()))).filter((s) => allow.has(s));
+      if (!uniq.length) {
+        setPill('err', 'no valid');
+        return;
+      }
+
+      setPill('run', 'running…');
+      let out = '## Ran suggested reports\n\n';
+      for (const name of uniq) {
+        const r = await api('/api/report', { dir: dirOrDefault(), script: name === 'status' ? 'status' : name });
+        out += `### ${name}\n` + (r.reportPath ? `- file: ${r.reportPath}\n` : '') + '\n';
+      }
+
+      setOut(out);
+      await refreshReports();
+      setPill('ok', 'done');
+      setTimeout(() => setPill('ok', 'idle'), 800);
+    } catch (e) {
+      setPill('err', 'run failed');
+    }
+  }
+
   async function applyPlan() {
     try {
       if (!state.lastPlan) {
@@ -473,8 +507,16 @@
       }
       setPill('run', 'applying…');
       const r = await api('/api/agents/apply', { dir: dirOrDefault(), plan: state.lastPlan });
+      state.lastApplied = r.applied || null;
       const summary = r.applied || {};
-      setOut('## Apply result\n\n' + JSON.stringify(summary, null, 2));
+
+      let msg = '## Apply result\n\n' + JSON.stringify(summary, null, 2);
+      if (summary && Array.isArray(summary.reportsSuggested) && summary.reportsSuggested.length) {
+        msg += '\n\n## Suggested reports\n- ' + summary.reportsSuggested.join('\n- ');
+        msg += '\n\nUse: **Run suggested reports** (sidebar)';
+      }
+
+      setOut(msg);
       setPill('ok', 'applied');
       setTimeout(() => setPill('ok', 'idle'), 800);
     } catch (e) {
@@ -527,4 +569,5 @@
   window.saveInbox = saveInbox;
   window.saveAndPlan = saveAndPlan;
   window.applyPlan = applyPlan;
+  window.runSuggestedReports = runSuggestedReports;
 })();
