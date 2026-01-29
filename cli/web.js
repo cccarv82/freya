@@ -429,6 +429,12 @@ function buildHtml(safeDefault) {
               Auto-apply plan
             </label>
             <div class="help">Quando ligado, o Save+Process já aplica tasks/blockers automaticamente.</div>
+
+            <label style="display:flex; align-items:center; gap:10px; user-select:none; margin-top:10px">
+              <input id="autoRunReports" type="checkbox" style="width:auto" onchange="toggleAutoRunReports()" />
+              Auto-run suggested reports
+            </label>
+            <div class="help">Quando ligado, após aplicar o plano, ele também roda os reports sugeridos automaticamente.</div>
           </div>
         </aside>
 
