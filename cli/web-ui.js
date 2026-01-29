@@ -526,6 +526,21 @@
     }
   }
 
+  async function exportObsidian() {
+    try {
+      setPill('run', 'exporting…');
+      const r = await api('/api/obsidian/export', { dir: dirOrDefault() });
+      setOut('## Obsidian export
+
+' + (r.output || 'ok'));
+      setPill('ok', 'exported');
+      setTimeout(() => setPill('ok', 'idle'), 800);
+    } catch (e) {
+      setPill('err', 'export failed');
+      setOut(String(e && e.message ? e.message : e));
+    }
+  }
+
   async function reloadSlugRules() {
     try {
       const r = await api('/api/project-slug-map/get', { dir: dirOrDefault() });
@@ -807,6 +822,7 @@
   window.refreshToday = refreshToday;
   window.reloadSlugRules = reloadSlugRules;
   window.saveSlugRules = saveSlugRules;
+  window.exportObsidian = exportObsidian;
   window.renderReportsList = renderReportsList;
   window.copyOut = copyOut;
   window.copyPath = copyPath;
