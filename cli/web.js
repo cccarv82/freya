@@ -382,6 +382,8 @@ function buildHtml(safeDefault) {
                   <b>Preview</b>
                   <div class="stack">
                     <button class="btn small" onclick="copyOut()">Copy</button>
+                    <button class="btn small" onclick="copyPath()">Copy path</button>
+                    <button class="btn small" onclick="openSelected()">Open file</button>
                     <button class="btn small" onclick="downloadSelected()">Download .md</button>
                     <button class="btn small" onclick="clearOut()">Clear</button>
                   </div>
@@ -640,6 +642,37 @@ async function cmdWeb({ port, dir, open, dev }) {
           if (!exists(full)) return safeJson(res, 404, { error: 'Report not found' });
           const text = fs.readFileSync(full, 'utf8');
           return safeJson(res, 200, { relPath: rel, text });
+        }
+
+        if (req.url === '/api/reports/resolve') {
+          const rel = payload.relPath;
+          if (!rel) return safeJson(res, 400, { error: 'Missing relPath' });
+          const full = path.join(workspaceDir, rel);
+          if (!exists(full)) return safeJson(res, 404, { error: 'Report not found' });
+          return safeJson(res, 200, { relPath: rel, fullPath: full });
+        }
+
+        if (req.url === '/api/reports/open') {
+          const rel = payload.relPath;
+          if (!rel) return safeJson(res, 400, { error: 'Missing relPath' });
+          const full = path.join(workspaceDir, rel);
+          if (!exists(full)) return safeJson(res, 404, { error: 'Report not found' });
+
+          // Best-effort: open the file with OS default app
+          try {
+            const platform = process.platform;
+            if (platform === 'win32') {
+              await run('cmd', ['/c', 'start', '', full], workspaceDir);
+            } else if (platform === 'darwin') {
+              await run('open', [full], workspaceDir);
+            } else {
+              await run('xdg-open', [full], workspaceDir);
+            }
+          } catch {
+            // ignore; still return ok
+          }
+
+          return safeJson(res, 200, { ok: true, relPath: rel, fullPath: full });
         }
 
         if (req.url === '/api/init') {
