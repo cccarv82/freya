@@ -13,6 +13,11 @@ function guessNpxCmd() {
   return process.platform === 'win32' ? 'npx.cmd' : 'npx';
 }
 
+function guessNpxYesFlag() {
+  // npx supports --yes/-y on modern npm; use -y for broad compatibility
+  return '-y';
+}
+
 function guessOpenCmd() {
   // Minimal cross-platform opener without extra deps
   if (process.platform === 'win32') return { cmd: 'cmd', args: ['/c', 'start', ''] };
@@ -60,6 +65,26 @@ function safeJson(res, code, obj) {
     'Content-Length': Buffer.byteLength(body)
   });
   res.end(body);
+}
+
+function looksLikeFreyaWorkspace(dir) {
+  // minimal check: has scripts/validate-data.js and data/
+  return (
+    exists(path.join(dir, 'package.json')) &&
+    exists(path.join(dir, 'scripts')) &&
+    exists(path.join(dir, 'data'))
+  );
+}
+
+function normalizeWorkspaceDir(inputDir) {
+  const d = path.resolve(process.cwd(), inputDir);
+  if (looksLikeFreyaWorkspace(d)) return d;
+
+  // Common case: user picked parent folder that contains ./freya
+  const child = path.join(d, 'freya');
+  if (looksLikeFreyaWorkspace(child)) return child;
+
+  return d;
 }
 
 function readBody(req) {
@@ -1007,7 +1032,8 @@ async function cmdWeb({ port, dir, open, dev }) {
         const raw = await readBody(req);
         const payload = raw ? JSON.parse(raw) : {};
 
-        const workspaceDir = path.resolve(process.cwd(), payload.dir || dir || './freya');
+        const requestedDir = payload.dir || dir || './freya';
+        const workspaceDir = normalizeWorkspaceDir(requestedDir);
 
         if (req.url === '/api/pick-dir') {
           const picked = await pickDirectoryNative();
@@ -1016,27 +1042,31 @@ async function cmdWeb({ port, dir, open, dev }) {
 
         if (req.url === '/api/init') {
           const pkg = '@cccarv82/freya';
-          const r = await run(guessNpxCmd(), [pkg, 'init', workspaceDir], process.cwd());
-          return safeJson(res, r.code === 0 ? 200 : 400, { output: (r.stdout + r.stderr).trim() });
+          const r = await run(guessNpxCmd(), [guessNpxYesFlag(), pkg, 'init', workspaceDir], process.cwd());
+          const output = (r.stdout + r.stderr).trim();
+          return safeJson(res, r.code === 0 ? 200 : 400, r.code === 0 ? { output } : { error: output || 'init failed', output });
         }
 
         if (req.url === '/api/update') {
           const pkg = '@cccarv82/freya';
           fs.mkdirSync(workspaceDir, { recursive: true });
-          const r = await run(guessNpxCmd(), [pkg, 'init', '--here'], workspaceDir);
-          return safeJson(res, r.code === 0 ? 200 : 400, { output: (r.stdout + r.stderr).trim() });
+          const r = await run(guessNpxCmd(), [guessNpxYesFlag(), pkg, 'init', '--here'], workspaceDir);
+          const output = (r.stdout + r.stderr).trim();
+          return safeJson(res, r.code === 0 ? 200 : 400, r.code === 0 ? { output } : { error: output || 'update failed', output });
         }
 
         const npmCmd = guessNpmCmd();
 
         if (req.url === '/api/health') {
           const r = await run(npmCmd, ['run', 'health'], workspaceDir);
-          return safeJson(res, r.code === 0 ? 200 : 400, { output: (r.stdout + r.stderr).trim() });
+          const output = (r.stdout + r.stderr).trim();
+          return safeJson(res, r.code === 0 ? 200 : 400, r.code === 0 ? { output } : { error: output || 'health failed', output });
         }
 
         if (req.url === '/api/migrate') {
           const r = await run(npmCmd, ['run', 'migrate'], workspaceDir);
-          return safeJson(res, r.code === 0 ? 200 : 400, { output: (r.stdout + r.stderr).trim() });
+          const output = (r.stdout + r.stderr).trim();
+          return safeJson(res, r.code === 0 ? 200 : 400, r.code === 0 ? { output } : { error: output || 'migrate failed', output });
         }
 
         if (req.url === '/api/report') {
@@ -1060,7 +1090,7 @@ async function cmdWeb({ port, dir, open, dev }) {
           // Prefer showing the actual report content when available.
           const output = reportText ? reportText : out;
 
-          return safeJson(res, r.code === 0 ? 200 : 400, { output, reportPath, reportText });
+          return safeJson(res, r.code === 0 ? 200 : 400, r.code === 0 ? { output, reportPath, reportText } : { error: output || 'report failed', output, reportPath, reportText });
         }
 
         if (req.url === '/api/publish') {
