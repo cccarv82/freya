@@ -181,6 +181,36 @@ function listReports(workspaceDir) {
   }));
 }
 
+function extractTitleFromMarkdown(md) {
+  const t = String(md || '');
+  const m = /^#\s+(.+)$/m.exec(t);
+  if (m && m[1]) return m[1].trim();
+  // fallback: first non-empty line
+  const line = t.split(/\r?\n/).map((l) => l.trim()).find((l) => l);
+  return line ? line.slice(0, 80) : 'Freya report';
+}
+
+function stripFirstH1(md) {
+  const t = String(md || '');
+  return t.replace(/^#\s+.+\r?\n/, '').trim();
+}
+
+function splitForEmbed(text, limit = 3900) {
+  const t = String(text || '');
+  if (t.length <= limit) return [t];
+  const chunks = [];
+  let i = 0;
+  while (i < t.length) {
+    let end = Math.min(t.length, i + limit);
+    // prefer splitting at newline
+    const nl = t.lastIndexOf('\n', end);
+    if (nl > i + 200) end = nl;
+    chunks.push(t.slice(i, end));
+    i = end;
+  }
+  return chunks;
+}
+
 function splitForDiscord(text, limit = 1900) {
   const t = String(text || '');
   if (t.length <= limit) return [t];
@@ -234,12 +264,17 @@ function postJson(url, bodyObj) {
   });
 }
 
-function postDiscordWebhook(url, content) {
-  return postJson(url, { content });
+function postDiscordWebhook(url, payload) {
+  if (typeof payload === 'string') return postJson(url, { content: payload });
+  return postJson(url, payload);
 }
 
 function postTeamsWebhook(url, text) {
   return postJson(url, { text });
+}
+
+function postTeamsCard(url, card) {
+  return postJson(url, card);
 }
 
 function escapeJsonControlChars(jsonText) {
@@ -388,6 +423,42 @@ function writeDebugEvent(workspaceDir, event) {
 async function publishRobust(webhookUrl, text, opts = {}) {
   const u = new URL(webhookUrl);
   const isDiscord = u.hostname.includes('discord.com') || u.hostname.includes('discordapp.com');
+
+  const mode = String(opts.mode || 'chunks');
+
+  if (mode === 'pretty') {
+    const title = extractTitleFromMarkdown(text);
+    const body = stripFirstH1(text);
+
+    if (isDiscord) {
+      const parts = splitForEmbed(body, 3900);
+      for (let i = 0; i < parts.length; i++) {
+        const payload = {
+          embeds: [
+            {
+              title: i === 0 ? title : undefined,
+              description: parts[i],
+              color: 0x5865F2
+            }
+          ]
+        };
+        await postDiscordWebhook(webhookUrl, payload);
+      }
+      return { ok: true, chunks: parts.length, mode: 'pretty' };
+    }
+
+    // Teams (MessageCard)
+    const card = {
+      '@type': 'MessageCard',
+      '@context': 'http://schema.org/extensions',
+      summary: title,
+      themeColor: '0078D7',
+      title,
+      text: body
+    };
+    await postTeamsCard(webhookUrl, card);
+    return { ok: true, chunks: 1, mode: 'pretty' };
+  }
 
   const chunks = isDiscord ? splitForDiscord(text, 1900) : splitForDiscord(text, 1800);
 
@@ -682,6 +753,11 @@ function buildHtml(safeDefault) {
                   <div class="help">Os webhooks ficam salvos na workspace em <code>data/settings/settings.json</code>.</div>
 
                   <div style="height:10px"></div>
+                  <label style="display:flex; align-items:center; gap:10px; user-select:none; margin: 6px 0 12px 0">
+                    <input id="prettyPublish" type="checkbox" checked style="width:auto" onchange="togglePrettyPublish()" />
+                    Pretty publish (cards/embeds)
+                  </label>
+
                   <div class="stack">
                     <button class="btn" onclick="saveSettings()">Save settings</button>
                     <button class="btn" onclick="publish('discord')">Publish selected → Discord</button>

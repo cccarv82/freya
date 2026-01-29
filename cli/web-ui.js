@@ -12,7 +12,8 @@
     lastPlan: '',
     lastApplied: null,
     autoApply: true,
-    autoRunReports: false
+    autoRunReports: false,
+    prettyPublish: true
   };
 
   function applyTheme(theme) {
@@ -205,6 +206,7 @@
     localStorage.setItem('freya.dir', $('dir').value);
     try { localStorage.setItem('freya.autoApply', state.autoApply ? '1' : '0'); } catch {}
     try { localStorage.setItem('freya.autoRunReports', state.autoRunReports ? '1' : '0'); } catch {}
+    try { localStorage.setItem('freya.prettyPublish', state.prettyPublish ? '1' : '0'); } catch {}
   }
 
   function loadLocal() {
@@ -218,6 +220,11 @@
       if (v2 !== null) state.autoRunReports = v2 === '1';
       const cb2 = $('autoRunReports');
       if (cb2) cb2.checked = !!state.autoRunReports;
+
+      const v3 = localStorage.getItem('freya.prettyPublish');
+      if (v3 !== null) state.prettyPublish = v3 === '1';
+      const cb3 = $('prettyPublish');
+      if (cb3) cb3.checked = !!state.prettyPublish;
     } catch {}
 
     const def = (window.__FREYA_DEFAULT_DIR && window.__FREYA_DEFAULT_DIR !== '__FREYA_DEFAULT_DIR__')
@@ -593,7 +600,8 @@
       const webhookUrl = target === 'discord' ? $('discord').value.trim() : $('teams').value.trim();
       if (!webhookUrl) throw new Error('Configure o webhook antes.');
       setPill('run', 'publish…');
-      await api('/api/publish', { webhookUrl, text: state.lastText, mode: 'chunks', allowSecrets: true });
+      const mode = state.prettyPublish ? 'pretty' : 'chunks';
+      await api('/api/publish', { webhookUrl, text: state.lastText, mode, allowSecrets: true });
       setPill('ok', 'published');
     } catch (e) {
       setPill('err', 'publish failed');
@@ -618,6 +626,12 @@
     } catch (e) {
       setPill('err', 'save failed');
     }
+  }
+
+  function togglePrettyPublish() {
+    const cb = $('prettyPublish');
+    state.prettyPublish = cb ? !!cb.checked : true;
+    try { localStorage.setItem('freya.prettyPublish', state.prettyPublish ? '1' : '0'); } catch {}
   }
 
   function toggleAutoRunReports() {
@@ -804,6 +818,7 @@
   window.saveAndPlan = saveAndPlan;
   window.toggleAutoApply = toggleAutoApply;
   window.toggleAutoRunReports = toggleAutoRunReports;
+  window.togglePrettyPublish = togglePrettyPublish;
   window.applyPlan = applyPlan;
   window.runSuggestedReports = runSuggestedReports;
 })();
