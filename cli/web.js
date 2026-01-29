@@ -635,7 +635,88 @@ function html() {
 </html>`;
 }
 
-async function cmdWeb({ port, dir, open }) {
+function ensureDir(p) {
+  fs.mkdirSync(p, { recursive: true });
+}
+
+function isoDate(d = new Date()) {
+  return d.toISOString().slice(0, 10);
+}
+
+function isoNow() {
+  return new Date().toISOString();
+}
+
+function seedDevWorkspace(workspaceDir) {
+  // Only create if missing; never overwrite user content.
+  ensureDir(path.join(workspaceDir, 'data', 'tasks'));
+  ensureDir(path.join(workspaceDir, 'data', 'career'));
+  ensureDir(path.join(workspaceDir, 'data', 'blockers'));
+  ensureDir(path.join(workspaceDir, 'data', 'Clients', 'acme', 'rocket'));
+  ensureDir(path.join(workspaceDir, 'logs', 'daily'));
+
+  const taskLog = path.join(workspaceDir, 'data', 'tasks', 'task-log.json');
+  if (!exists(taskLog)) {
+    fs.writeFileSync(taskLog, JSON.stringify({
+      schemaVersion: 1,
+      tasks: [
+        { id: 't-demo-1', description: 'Preparar update executivo', category: 'DO_NOW', status: 'PENDING', createdAt: isoNow(), priority: 'high' },
+        { id: 't-demo-2', description: 'Revisar PR de integração Teams', category: 'SCHEDULE', status: 'PENDING', createdAt: isoNow(), priority: 'medium' },
+        { id: 't-demo-3', description: 'Rodar retro e registrar aprendizados', category: 'DO_NOW', status: 'COMPLETED', createdAt: isoNow(), completedAt: isoNow(), priority: 'low' }
+      ]
+    }, null, 2) + '\n', 'utf8');
+  }
+
+  const careerLog = path.join(workspaceDir, 'data', 'career', 'career-log.json');
+  if (!exists(careerLog)) {
+    fs.writeFileSync(careerLog, JSON.stringify({
+      schemaVersion: 1,
+      entries: [
+        { id: 'c-demo-1', date: isoDate(), type: 'Achievement', description: 'Publicou o CLI @cccarv82/freya com init/web', tags: ['shipping', 'tooling'], source: 'dev-seed' },
+        { id: 'c-demo-2', date: isoDate(), type: 'Feedback', description: 'Feedback: UX do painel web está “muito promissor”', tags: ['product'], source: 'dev-seed' }
+      ]
+    }, null, 2) + '\n', 'utf8');
+  }
+
+  const blockerLog = path.join(workspaceDir, 'data', 'blockers', 'blocker-log.json');
+  if (!exists(blockerLog)) {
+    fs.writeFileSync(blockerLog, JSON.stringify({
+      schemaVersion: 1,
+      blockers: [
+        { id: 'b-demo-1', title: 'Webhook do Teams falhando em ambientes com 2FA', description: 'Ajustar token / payload', createdAt: isoNow(), status: 'OPEN', severity: 'HIGH', nextAction: 'Validar payload e limites' },
+        { id: 'b-demo-2', title: 'Definir template de status report por cliente', description: 'Padronizar headings', createdAt: isoNow(), status: 'MITIGATING', severity: 'MEDIUM' }
+      ]
+    }, null, 2) + '\n', 'utf8');
+  }
+
+  const projectStatus = path.join(workspaceDir, 'data', 'Clients', 'acme', 'rocket', 'status.json');
+  if (!exists(projectStatus)) {
+    fs.writeFileSync(projectStatus, JSON.stringify({
+      schemaVersion: 1,
+      client: 'Acme',
+      project: 'Rocket',
+      currentStatus: 'Green — progressing as planned',
+      lastUpdated: isoNow(),
+      active: true,
+      history: [
+        { date: isoNow(), type: 'Status', content: 'Launched stage 1', source: 'dev-seed' },
+        { date: isoNow(), type: 'Risk', content: 'Potential delay on vendor dependency', source: 'dev-seed' }
+      ]
+    }, null, 2) + '\n', 'utf8');
+  }
+
+  const dailyLog = path.join(workspaceDir, 'logs', 'daily', `${isoDate()}.md`);
+  if (!exists(dailyLog)) {
+    fs.writeFileSync(dailyLog, `# Daily Log ${isoDate()}\n\n## [09:15] Raw Input\nReunião com a Acme. Tudo verde, mas preciso alinhar com fornecedor.\n\n## [16:40] Raw Input\nTerminei o relatório SM e publiquei no Discord.\n`, 'utf8');
+  }
+
+  return {
+    seeded: true,
+    paths: { taskLog, careerLog, blockerLog, projectStatus, dailyLog }
+  };
+}
+
+async function cmdWeb({ port, dir, open, dev }) {
   const host = '127.0.0.1';
 
   const server = http.createServer(async (req, res) => {
@@ -757,6 +838,18 @@ async function cmdWeb({ port, dir, open }) {
   await new Promise((resolve) => server.listen(port, host, resolve));
 
   const url = `http://${host}:${port}/`;
+
+  // Optional dev seed (safe: only creates files if missing)
+  if (dev) {
+    const target = dir ? path.resolve(process.cwd(), dir) : path.join(process.cwd(), 'freya');
+    try {
+      seedDevWorkspace(target);
+      process.stdout.write(`Dev seed: created demo files in ${target}\n`);
+    } catch (e) {
+      process.stdout.write(`Dev seed failed: ${e.message || String(e)}\n`);
+    }
+  }
+
   process.stdout.write(`FREYA web running at ${url}\n`);
   if (open) openBrowser(url);
 }

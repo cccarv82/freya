@@ -11,7 +11,7 @@ freya - F.R.E.Y.A. CLI
 
 Usage:
   freya init [dir] [--force] [--here|--in-place] [--force-data] [--force-logs]
-  freya web [--port <n>] [--dir <path>] [--no-open]
+  freya web [--port <n>] [--dir <path>] [--no-open] [--dev]
 
 Defaults:
   - If no [dir] is provided, creates ./freya
@@ -27,6 +27,7 @@ Examples:
 
   freya web
   freya web --dir ./freya --port 3872
+  freya web --dev            # seeds demo data/logs for quick testing
 `;
 }
 
@@ -81,6 +82,7 @@ async function run(argv) {
     const port = Number(kv['--port'] || 3872);
     const dir = kv['--dir'] ? path.resolve(process.cwd(), kv['--dir']) : null;
     const open = !flags.has('--no-open');
+    const dev = flags.has('--dev');
 
     if (!Number.isFinite(port) || port <= 0) {
       process.stderr.write('Invalid --port\n');
@@ -88,7 +90,7 @@ async function run(argv) {
       return;
     }
 
-    await cmdWeb({ port, dir, open });
+    await cmdWeb({ port, dir, open, dev });
     return;
   }
 
