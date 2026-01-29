@@ -84,7 +84,32 @@ try {
     throw new Error('in-place init did not create expected files');
   }
 
-  console.log('✅ PASS: freya init supports default dir, explicit dir, and in-place');
+  // 4) preserve data/logs when present
+  const preserveDir = path.join(tempRoot, 'preserve');
+  fs.mkdirSync(path.join(preserveDir, 'data', 'tasks'), { recursive: true });
+  fs.mkdirSync(path.join(preserveDir, 'logs', 'daily'), { recursive: true });
+  fs.writeFileSync(path.join(preserveDir, 'data', 'tasks', 'task-log.json'), JSON.stringify({ schemaVersion: 1, tasks: [{ id: 'keep', description: 'keep', category: 'DO_NOW', status: 'PENDING', createdAt: new Date().toISOString() }] }, null, 2));
+  fs.writeFileSync(path.join(preserveDir, 'logs', 'daily', '2026-01-01.md'), 'keep\n', 'utf8');
+
+  const resPreserve = spawnSync('node', [path.join(repoRoot, 'bin/freya.js'), 'init', '--here'], {
+    cwd: preserveDir,
+    encoding: 'utf8'
+  });
+  if (resPreserve.status !== 0) {
+    console.error('❌ FAIL: freya init preserve run exited non-zero');
+    if (resPreserve.stdout) console.error(resPreserve.stdout);
+    if (resPreserve.stderr) console.error(resPreserve.stderr);
+    process.exit(1);
+  }
+  const afterTask = JSON.parse(fs.readFileSync(path.join(preserveDir, 'data', 'tasks', 'task-log.json'), 'utf8'));
+  if (!afterTask.tasks || !afterTask.tasks.find((t) => t.id === 'keep')) {
+    throw new Error('data/ was not preserved');
+  }
+  if (!exists(path.join(preserveDir, 'logs', 'daily', '2026-01-01.md'))) {
+    throw new Error('logs/ was not preserved');
+  }
+
+  console.log('✅ PASS: freya init supports default dir, explicit dir, in-place, and preserves data/logs');
 } catch (e) {
   console.error('❌ FAIL:', e.message);
   process.exit(1);

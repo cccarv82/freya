@@ -36,14 +36,35 @@ function copyFile(src, dest, force) {
   return { copied: true };
 }
 
-function copyDirRecursive(srcDir, destDir, force, summary) {
+function isNonEmptyDir(dir) {
+  try {
+    const entries = fs.readdirSync(dir);
+    // ignore common empty markers
+    const meaningful = entries.filter((e) => e !== '.DS_Store');
+    return meaningful.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+function copyDirRecursive(srcDir, destDir, force, summary, options = {}) {
   const entries = fs.readdirSync(srcDir, { withFileTypes: true });
   for (const ent of entries) {
     const src = path.join(srcDir, ent.name);
     const dest = path.join(destDir, ent.name);
 
+    // Preserve user state by default
     if (ent.isDirectory()) {
-      copyDirRecursive(src, dest, force, summary);
+      if (ent.name === 'data' && isNonEmptyDir(dest) && !options.forceData) {
+        summary.skipped.push('data/**');
+        continue;
+      }
+      if (ent.name === 'logs' && isNonEmptyDir(dest) && !options.forceLogs) {
+        summary.skipped.push('logs/**');
+        continue;
+      }
+
+      copyDirRecursive(src, dest, force, summary, options);
       continue;
     }
 
@@ -97,7 +118,7 @@ function ensurePackageJson(targetDir, force, summary) {
   summary.updated.push('package.json');
 }
 
-async function cmdInit({ targetDir, force }) {
+async function cmdInit({ targetDir, force, forceData = false, forceLogs = false }) {
   const templateDir = path.join(__dirname, '..', 'templates', 'base');
   if (!exists(templateDir)) throw new Error(`Missing template directory: ${templateDir}`);
 
@@ -105,8 +126,8 @@ async function cmdInit({ targetDir, force }) {
 
   const summary = { copied: [], created: [], updated: [], skipped: [] };
 
-  // Copy template files
-  copyDirRecursive(templateDir, targetDir, force, summary);
+  // Copy template files (preserve data/logs by default)
+  copyDirRecursive(templateDir, targetDir, force, summary, { forceData, forceLogs });
 
   // Ensure package.json has scripts
   ensurePackageJson(targetDir, force, summary);
