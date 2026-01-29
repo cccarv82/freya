@@ -409,7 +409,7 @@
       const webhookUrl = target === 'discord' ? $('discord').value.trim() : $('teams').value.trim();
       if (!webhookUrl) throw new Error('Configure o webhook antes.');
       setPill('run', 'publish…');
-      await api('/api/publish', { webhookUrl, text: state.lastText });
+      await api('/api/publish', { webhookUrl, text: state.lastText, mode: 'chunks' });
       setPill('ok', 'published');
     } catch (e) {
       setPill('err', 'publish failed');

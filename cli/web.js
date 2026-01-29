@@ -121,6 +121,81 @@ function listReports(workspaceDir) {
   }));
 }
 
+function splitForDiscord(text, limit = 1900) {
+  const t = String(text || '');
+  if (t.length <= limit) return [t];
+
+  const NL = String.fromCharCode(10);
+  const NL2 = NL + NL;
+
+  const parts = [];
+  let i = 0;
+  while (i < t.length) {
+    let end = Math.min(t.length, i + limit);
+    const window = t.slice(i, end);
+    const cut = window.lastIndexOf(NL2);
+    const cut2 = window.lastIndexOf(NL);
+    if (cut > 400) end = i + cut;
+    else if (cut2 > 600) end = i + cut2;
+    const chunk = t.slice(i, end).trim();
+    if (chunk) parts.push(chunk);
+    i = end;
+  }
+  return parts;
+}
+
+function postJson(url, bodyObj) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const body = JSON.stringify(bodyObj);
+    const options = {
+      method: 'POST',
+      hostname: u.hostname,
+      path: u.pathname + u.search,
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body)
+      }
+    };
+
+    const proto = u.protocol === 'https:' ? require('https') : require('http');
+    const req2 = proto.request(options, (r2) => {
+      const chunks = [];
+      r2.on('data', (c) => chunks.push(c));
+      r2.on('end', () => {
+        const raw = Buffer.concat(chunks).toString('utf8');
+        if (r2.statusCode >= 200 && r2.statusCode < 300) return resolve({ ok: true, status: r2.statusCode, body: raw });
+        return reject(new Error('Webhook error ' + r2.statusCode + ': ' + raw));
+      });
+    });
+    req2.on('error', reject);
+    req2.write(body);
+    req2.end();
+  });
+}
+
+function postDiscordWebhook(url, content) {
+  return postJson(url, { content });
+}
+
+function postTeamsWebhook(url, text) {
+  return postJson(url, { text });
+}
+
+async function publishRobust(webhookUrl, text, opts = {}) {
+  const u = new URL(webhookUrl);
+  const isDiscord = u.hostname.includes('discord.com') || u.hostname.includes('discordapp.com');
+
+  const chunks = isDiscord ? splitForDiscord(text, 1900) : splitForDiscord(text, 1800);
+
+  for (const chunk of chunks) {
+    if (isDiscord) await postDiscordWebhook(webhookUrl, chunk);
+    else await postTeamsWebhook(webhookUrl, chunk);
+  }
+
+  return { ok: true, chunks: chunks.length, mode: 'chunks' };
+}
+
 function safeJson(res, code, obj) {
   const body = JSON.stringify(obj);
   res.writeHead(code, {
@@ -1047,37 +1122,16 @@ async function cmdWeb({ port, dir, open, dev }) {
         if (req.url === '/api/publish') {
           const webhookUrl = payload.webhookUrl;
           const text = payload.text;
+          const mode = payload.mode || 'chunks';
           if (!webhookUrl) return safeJson(res, 400, { error: 'Missing webhookUrl' });
           if (!text) return safeJson(res, 400, { error: 'Missing text' });
 
-          // Minimal webhook post: Discord expects {content}, Teams expects {text}
-          const u = new URL(webhookUrl);
-          const isDiscord = u.hostname.includes('discord.com') || u.hostname.includes('discordapp.com');
-          const body = JSON.stringify(isDiscord ? { content: text.slice(0, 1800) } : { text: text.slice(0, 1800) });
-
-          const options = {
-            method: 'POST',
-            hostname: u.hostname,
-            path: u.pathname + u.search,
-            headers: {
-              'Content-Type': 'application/json',
-              'Content-Length': Buffer.byteLength(body)
-            }
-          };
-
-          const proto = u.protocol === 'https:' ? require('https') : require('http');
-          const req2 = proto.request(options, (r2) => {
-            const chunks = [];
-            r2.on('data', (c) => chunks.push(c));
-            r2.on('end', () => {
-              if (r2.statusCode >= 200 && r2.statusCode < 300) return safeJson(res, 200, { ok: true });
-              return safeJson(res, 400, { error: `Webhook error ${r2.statusCode}: ${Buffer.concat(chunks).toString('utf8')}` });
-            });
-          });
-          req2.on('error', (e) => safeJson(res, 400, { error: e.message }));
-          req2.write(body);
-          req2.end();
-          return;
+          try {
+            const result = await publishRobust(webhookUrl, text, { mode });
+            return safeJson(res, 200, result);
+          } catch (e) {
+            return safeJson(res, 400, { error: e.message || String(e) });
+          }
         }
 
         return safeJson(res, 404, { error: 'Not found' });
