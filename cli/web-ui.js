@@ -337,6 +337,79 @@
     }
   }
 
+  function renderTasks(list) {
+    const el = $('tasksList');
+    if (!el) return;
+    el.innerHTML = '';
+    for (const t of list || []) {
+      const row = document.createElement('div');
+      row.className = 'rep';
+      const pri = (t.priority || '').toUpperCase();
+      row.innerHTML = '<div style="display:flex; justify-content:space-between; gap:10px; align-items:center">'
+        + '<div style="min-width:0"><div style="font-weight:700">' + escapeHtml(t.description || '') + '</div>'
+        + '<div style="opacity:.7; font-size:11px; margin-top:4px">' + escapeHtml(String(t.category || '')) + (pri ? (' · ' + escapeHtml(pri)) : '') + '</div></div>'
+        + '<button class="btn small" type="button">Complete</button>'
+        + '</div>';
+      const btn = row.querySelector('button');
+      btn.onclick = async () => {
+        try {
+          setPill('run', 'completing…');
+          await api('/api/tasks/complete', { dir: dirOrDefault(), id: t.id });
+          await refreshToday();
+          setPill('ok', 'completed');
+          setTimeout(() => setPill('ok', 'idle'), 800);
+        } catch (e) {
+          setPill('err', 'complete failed');
+          setOut(String(e && e.message ? e.message : e));
+        }
+      };
+      el.appendChild(row);
+    }
+    if (!el.childElementCount) {
+      const empty = document.createElement('div');
+      empty.className = 'help';
+      empty.textContent = 'No DO_NOW tasks.';
+      el.appendChild(empty);
+    }
+  }
+
+  function renderBlockers(list) {
+    const el = $('blockersList');
+    if (!el) return;
+    el.innerHTML = '';
+    for (const b of list || []) {
+      const row = document.createElement('div');
+      row.className = 'rep';
+      const sev = String(b.severity || '').toUpperCase();
+      row.innerHTML = '<div style="display:flex; justify-content:space-between; gap:10px; align-items:center">'
+        + '<div style="min-width:0"><div style="font-weight:800">' + escapeHtml(sev) + '</div>'
+        + '<div style="margin-top:4px">' + escapeHtml(b.title || '') + '</div>'
+        + '</div>'
+        + '<div style="opacity:.7; font-size:11px; white-space:nowrap">' + escapeHtml(fmtWhen(new Date(b.createdAt || Date.now()).getTime())) + '</div>'
+        + '</div>';
+      el.appendChild(row);
+    }
+    if (!el.childElementCount) {
+      const empty = document.createElement('div');
+      empty.className = 'help';
+      empty.textContent = 'No OPEN blockers.';
+      el.appendChild(empty);
+    }
+  }
+
+  async function refreshToday() {
+    try {
+      const [t, b] = await Promise.all([
+        api('/api/tasks/list', { dir: dirOrDefault(), category: 'DO_NOW', status: 'PENDING', limit: 5 }),
+        api('/api/blockers/list', { dir: dirOrDefault(), status: 'OPEN', limit: 5 })
+      ]);
+      renderTasks((t && t.tasks) || []);
+      renderBlockers((b && b.blockers) || []);
+    } catch (e) {
+      // keep silent in background refresh
+    }
+  }
+
   async function pickDir() {
     try {
       setPill('run', 'picker…');
@@ -680,6 +753,7 @@
   window.publish = publish;
   window.saveSettings = saveSettings;
   window.refreshReports = refreshReports;
+  window.refreshToday = refreshToday;
   window.renderReportsList = renderReportsList;
   window.copyOut = copyOut;
   window.copyPath = copyPath;

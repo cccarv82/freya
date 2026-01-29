@@ -640,6 +640,22 @@ function buildHtml(safeDefault) {
 
               <div class="panel">
                 <div class="panelHead">
+                  <b>Today</b>
+                  <div class="stack">
+                    <button class="btn small" onclick="refreshToday()">Refresh</button>
+                  </div>
+                </div>
+                <div class="panelBody">
+                  <div class="small" style="margin-bottom:8px; opacity:.8">Do Now</div>
+                  <div id="tasksList" style="display:grid; gap:8px"></div>
+                  <div style="height:12px"></div>
+                  <div class="small" style="margin-bottom:8px; opacity:.8">Open blockers</div>
+                  <div id="blockersList" style="display:grid; gap:8px"></div>
+                </div>
+              </div>
+
+              <div class="panel">
+                <div class="panelHead">
                   <b>Preview</b>
                   <div class="stack">
                     <button class="btn small" onclick="copyOut()">Copy</button>
@@ -1351,6 +1367,93 @@ async function cmdWeb({ port, dir, open, dev }) {
           return safeJson(res, r.code === 0 ? 200 : 400, r.code === 0 ? { output } : { error: output || 'migrate failed', output });
         }
 
+
+        if (req.url === '/api/tasks/list') {
+          const limit = Math.max(1, Math.min(50, Number(payload.limit || 10)));
+          const cat = payload.category ? String(payload.category).trim() : null;
+          const status = payload.status ? String(payload.status).trim() : null;
+
+          const file = path.join(workspaceDir, 'data', 'tasks', 'task-log.json');
+          const doc = readJsonOrNull(file) || { schemaVersion: 1, tasks: [] };
+          const tasks = Array.isArray(doc.tasks) ? doc.tasks.slice() : [];
+
+          const filtered = tasks
+            .filter((t) => {
+              if (!t || typeof t !== 'object') return false;
+              if (cat && String(t.category || '').trim() !== cat) return false;
+              if (status && String(t.status || '').trim() !== status) return false;
+              return true;
+            })
+            .sort((a, b) => {
+              const pa = String(a.priority || '').toLowerCase();
+              const pb = String(b.priority || '').toLowerCase();
+              const rank = (p) => (p === 'high' ? 0 : p === 'medium' ? 1 : p === 'low' ? 2 : 3);
+              const ra = rank(pa), rb = rank(pb);
+              if (ra !== rb) return ra - rb;
+              return String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+            })
+            .slice(0, limit);
+
+          return safeJson(res, 200, { ok: true, tasks: filtered });
+        }
+
+        if (req.url === '/api/tasks/complete') {
+          const id = String(payload.id || '').trim();
+          if (!id) return safeJson(res, 400, { error: 'Missing id' });
+
+          const file = path.join(workspaceDir, 'data', 'tasks', 'task-log.json');
+          const doc = readJsonOrNull(file) || { schemaVersion: 1, tasks: [] };
+          const tasks = Array.isArray(doc.tasks) ? doc.tasks : [];
+
+          const now = isoNow();
+          let updated = null;
+          for (const t of tasks) {
+            if (t && t.id === id) {
+              t.status = 'COMPLETED';
+              t.completedAt = now;
+              updated = t;
+              break;
+            }
+          }
+
+          if (!updated) return safeJson(res, 404, { error: 'Task not found' });
+          writeJson(file, doc);
+          return safeJson(res, 200, { ok: true, task: updated });
+        }
+
+        if (req.url === '/api/blockers/list') {
+          const limit = Math.max(1, Math.min(50, Number(payload.limit || 10)));
+          const status = payload.status ? String(payload.status).trim() : 'OPEN';
+
+          const file = path.join(workspaceDir, 'data', 'blockers', 'blocker-log.json');
+          const doc = readJsonOrNull(file) || { schemaVersion: 1, blockers: [] };
+          const blockers = Array.isArray(doc.blockers) ? doc.blockers.slice() : [];
+
+          const sevRank = (s) => {
+            const v = String(s || '').toUpperCase();
+            if (v === 'CRITICAL') return 0;
+            if (v === 'HIGH') return 1;
+            if (v === 'MEDIUM') return 2;
+            if (v === 'LOW') return 3;
+            return 9;
+          };
+
+          const filtered = blockers
+            .filter((b) => {
+              if (!b || typeof b !== 'object') return false;
+              if (status && String(b.status || '').trim() !== status) return false;
+              return true;
+            })
+            .sort((a, b) => {
+              const ra = sevRank(a.severity);
+              const rb = sevRank(b.severity);
+              if (ra !== rb) return ra - rb;
+              return String(a.createdAt || '').localeCompare(String(b.createdAt || ''));
+            })
+            .slice(0, limit);
+
+          return safeJson(res, 200, { ok: true, blockers: filtered });
+        }
         if (req.url === '/api/report') {
           const script = payload.script;
           if (!script) return safeJson(res, 400, { error: 'Missing script' });
