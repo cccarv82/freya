@@ -393,6 +393,7 @@ function buildHtml(safeDefault) {
                   <b>Preview</b>
                   <div class="stack">
                     <button class="btn small" onclick="copyOut()">Copy</button>
+                    <button class="btn small" onclick="applyPlan()">Apply plan</button>
                     <button class="btn small" onclick="copyPath()">Copy path</button>
                     <button class="btn small" onclick="openSelected()">Open file</button>
                     <button class="btn small" onclick="downloadSelected()">Download .md</button>
@@ -700,8 +701,8 @@ async function cmdWeb({ port, dir, open, dev }) {
           const schema = {
             actions: [
               { type: 'append_daily_log', text: '<string>' },
-              { type: 'create_task', description: '<string>', priority: 'HIGH|MEDIUM|LOW', category: 'DO_NOW|SCHEDULE|DELEGATE' },
-              { type: 'create_blocker', title: '<string>', severity: 'HIGH|MEDIUM|LOW', notes: '<string>' },
+              { type: 'create_task', description: '<string>', priority: 'HIGH|MEDIUM|LOW', category: 'DO_NOW|SCHEDULE|DELEGATE|IGNORE' },
+              { type: 'create_blocker', title: '<string>', severity: 'CRITICAL|HIGH|MEDIUM|LOW', notes: '<string>' },
               { type: 'suggest_report', name: 'daily|status|sm-weekly|blockers' },
               { type: 'oracle_query', query: '<string>' }
             ]
@@ -721,6 +722,129 @@ async function cmdWeb({ port, dir, open, dev }) {
           } catch (e) {
             return safeJson(res, 400, { error: `Copilot CLI not available (${cmd}). Configure COPILOT_CMD or install copilot.`, details: e.message || String(e) });
           }
+        }
+
+        if (req.url === '/api/agents/apply') {
+          const planRaw = String(payload.plan || '').trim();
+          if (!planRaw) return safeJson(res, 400, { error: 'Missing plan' });
+
+          function extractJson(text) {
+            const start = text.indexOf('{');
+            const end = text.lastIndexOf('}');
+            if (start === -1 || end === -1 || end <= start) return null;
+            return text.slice(start, end + 1);
+          }
+
+          const jsonText = extractJson(planRaw) || planRaw;
+          let plan;
+          try {
+            plan = JSON.parse(jsonText);
+          } catch (e) {
+            return safeJson(res, 400, { error: 'Plan is not valid JSON', details: e.message || String(e) });
+          }
+
+          const actions = Array.isArray(plan.actions) ? plan.actions : [];
+          if (!Array.isArray(actions) || actions.length === 0) {
+            return safeJson(res, 400, { error: 'Plan has no actions[]' });
+          }
+
+          const taskFile = path.join(workspaceDir, 'data', 'tasks', 'task-log.json');
+          const blockerFile = path.join(workspaceDir, 'data', 'blockers', 'blocker-log.json');
+
+          const taskLog = readJsonOrNull(taskFile) || { schemaVersion: 1, tasks: [] };
+          if (!Array.isArray(taskLog.tasks)) taskLog.tasks = [];
+          if (typeof taskLog.schemaVersion !== 'number') taskLog.schemaVersion = 1;
+
+          const blockerLog = readJsonOrNull(blockerFile) || { schemaVersion: 1, blockers: [] };
+          if (!Array.isArray(blockerLog.blockers)) blockerLog.blockers = [];
+          if (typeof blockerLog.schemaVersion !== 'number') blockerLog.schemaVersion = 1;
+
+          const now = new Date().toISOString();
+          const applied = { tasks: 0, blockers: 0, reportsSuggested: [], oracleQueries: [] };
+
+          function makeId(prefix) {
+            const rand = Math.random().toString(16).slice(2, 8);
+            return `${prefix}-${Date.now()}-${rand}`;
+          }
+
+          function normPriority(p) {
+            const v = String(p || '').trim().toLowerCase();
+            if (v === 'high') return 'high';
+            if (v === 'medium') return 'medium';
+            if (v === 'low') return 'low';
+            if (v === 'critical') return 'high';
+            return undefined;
+          }
+
+          function normSeverity(s) {
+            const v = String(s || '').trim().toUpperCase();
+            if (v.includes('CRIT')) return 'CRITICAL';
+            if (v.includes('HIGH')) return 'HIGH';
+            if (v.includes('MED')) return 'MEDIUM';
+            if (v.includes('LOW')) return 'LOW';
+            return 'MEDIUM';
+          }
+
+          const validTaskCats = new Set(['DO_NOW', 'SCHEDULE', 'DELEGATE', 'IGNORE']);
+
+          for (const a of actions) {
+            if (!a || typeof a !== 'object') continue;
+            const type = String(a.type || '').trim();
+
+            if (type === 'create_task') {
+              const description = String(a.description || '').trim();
+              if (!description) continue;
+              const category = validTaskCats.has(String(a.category || '').trim()) ? String(a.category).trim() : 'DO_NOW';
+              const priority = normPriority(a.priority);
+              const task = {
+                id: makeId('t'),
+                description,
+                category,
+                status: 'PENDING',
+                createdAt: now,
+              };
+              if (priority) task.priority = priority;
+              taskLog.tasks.push(task);
+              applied.tasks++;
+              continue;
+            }
+
+            if (type === 'create_blocker') {
+              const title = String(a.title || '').trim();
+              const notes = String(a.notes || '').trim();
+              if (!title) continue;
+              const severity = normSeverity(a.severity);
+              const blocker = {
+                id: makeId('b'),
+                title,
+                description: notes || title,
+                createdAt: now,
+                status: 'OPEN',
+                severity,
+              };
+              blockerLog.blockers.push(blocker);
+              applied.blockers++;
+              continue;
+            }
+
+            if (type === 'suggest_report') {
+              const name = String(a.name || '').trim();
+              if (name) applied.reportsSuggested.push(name);
+              continue;
+            }
+
+            if (type === 'oracle_query') {
+              const query = String(a.query || '').trim();
+              if (query) applied.oracleQueries.push(query);
+              continue;
+            }
+          }
+
+          // Persist
+          writeJson(taskFile, taskLog);
+          writeJson(blockerFile, blockerLog);
+
+          return safeJson(res, 200, { ok: true, applied });
         }
 
         if (req.url === '/api/reports/open') {
