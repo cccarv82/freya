@@ -675,7 +675,6 @@ function buildHtml(safeDefault) {
             <textarea id="inboxText" rows="6" placeholder="Cole aqui updates do dia (status, blockers, decisões, ideias)…" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line); background: rgba(255,255,255,.72); color: var(--text); outline:none; resize: vertical;"></textarea>
             <div style="height:10px"></div>
             <div class="stack">
-              <button class="btn sideBtn" onclick="saveInbox()">Save to Daily Log</button>
               <button class="btn primary sideBtn" onclick="saveAndPlan()">Save + Process (Agents)</button>
               <button class="btn sideBtn" onclick="runSuggestedReports()">Run suggested reports</button>
             </div>

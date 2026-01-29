@@ -325,7 +325,7 @@
   async function refreshReports(opts = {}) {
     try {
       const r = await api('/api/reports/list', { dir: dirOrDefault() });
-      state.reports = (r.reports || []).slice(0, 50);
+      state.reports = (r.reports || []).slice(0, 10);
       renderReportsList();
 
       const latest = state.reports && state.reports[0] ? state.reports[0] : null;
