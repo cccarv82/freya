@@ -450,7 +450,6 @@
         : 'Publicar o relatório selecionado?';
 
       const ok = confirm(msg);
-      const ok = confirm('Publicar o relatório selecionado?');
       if (!ok) return;
 
       const webhookUrl = target === 'discord' ? $('discord').value.trim() : $('teams').value.trim();
