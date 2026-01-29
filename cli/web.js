@@ -1046,7 +1046,7 @@ async function cmdWeb({ port, dir, open, dev }) {
 
           const now = new Date().toISOString();
           const applyMode = String(payload.mode || 'all').trim();
-          undefined
+          const applied = { tasks: 0, blockers: 0, tasksSkipped: 0, blockersSkipped: 0, reportsSuggested: [], oracleQueries: [], mode: applyMode };
 
           function makeId(prefix) {
             const rand = Math.random().toString(16).slice(2, 8);
