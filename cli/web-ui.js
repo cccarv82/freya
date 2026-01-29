@@ -127,6 +127,28 @@
     }
   }
 
+  function downloadSelected() {
+    try {
+      if (!state.selectedReport || !state.lastText) {
+        setPill('err', 'no report');
+        return;
+      }
+      const blob = new Blob([state.lastText], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = state.selectedReport.name || 'report.md';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setPill('ok', 'downloaded');
+      setTimeout(() => setPill('ok', 'idle'), 800);
+    } catch {
+      setPill('err', 'download failed');
+    }
+  }
+
   function setLast(p) {
     state.lastReportPath = p;
     const el = $('last');
@@ -402,6 +424,7 @@
   window.refreshReports = refreshReports;
   window.renderReportsList = renderReportsList;
   window.copyOut = copyOut;
+  window.downloadSelected = downloadSelected;
   window.clearOut = clearOut;
   window.toggleTheme = toggleTheme;
 })();

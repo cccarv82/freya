@@ -382,6 +382,7 @@ function buildHtml(safeDefault) {
                   <b>Preview</b>
                   <div class="stack">
                     <button class="btn small" onclick="copyOut()">Copy</button>
+                    <button class="btn small" onclick="downloadSelected()">Download .md</button>
                     <button class="btn small" onclick="clearOut()">Clear</button>
                   </div>
                 </div>
