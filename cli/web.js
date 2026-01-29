@@ -725,6 +725,88 @@ async function cmdWeb({ port, dir, open, dev }) {
           }
         }
 
+        if (req.url === '/api/agents/preview') {
+          const planRaw = String(payload.plan || '').trim();
+          if (!planRaw) return safeJson(res, 400, { error: 'Missing plan' });
+
+          function extractJson(text) {
+            const start = text.indexOf('{');
+            const end = text.lastIndexOf('}');
+            if (start === -1 || end === -1 || end <= start) return null;
+            return text.slice(start, end + 1);
+          }
+
+          const jsonText = extractJson(planRaw) || planRaw;
+          let plan;
+          try {
+            plan = JSON.parse(jsonText);
+          } catch (e) {
+            return safeJson(res, 400, { error: 'Plan is not valid JSON', details: e.message || String(e) });
+          }
+
+          const actions = Array.isArray(plan.actions) ? plan.actions : [];
+          if (!Array.isArray(actions) || actions.length === 0) {
+            return safeJson(res, 400, { error: 'Plan has no actions[]' });
+          }
+
+          // Validate + normalize to a safe preview shape
+          const validTaskCats = new Set(['DO_NOW', 'SCHEDULE', 'DELEGATE', 'IGNORE']);
+          const validSev = new Set(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']);
+
+          const preview = { tasks: [], blockers: [], reportsSuggested: [], oracleQueries: [], ignored: 0, errors: [] };
+
+          for (const a of actions) {
+            if (!a || typeof a !== 'object') { preview.ignored++; continue; }
+            const type = String(a.type || '').trim();
+
+            if (type === 'create_task') {
+              const description = String(a.description || '').trim();
+              const category = String(a.category || '').trim();
+              const priorityRaw = String(a.priority || '').trim().toLowerCase();
+              const priority = (priorityRaw === 'high' || priorityRaw === 'medium' || priorityRaw === 'low') ? priorityRaw : undefined;
+              if (!description) { preview.errors.push('Task missing description'); continue; }
+              preview.tasks.push({ description, category: validTaskCats.has(category) ? category : 'DO_NOW', priority });
+              continue;
+            }
+
+            if (type === 'create_blocker') {
+              const title = String(a.title || '').trim();
+              const notes = String(a.notes || '').trim();
+              let severity = String(a.severity || '').trim().toUpperCase();
+              if (!validSev.has(severity)) {
+                if (severity.includes('CRIT')) severity = 'CRITICAL';
+                else if (severity.includes('HIGH')) severity = 'HIGH';
+                else if (severity.includes('MED')) severity = 'MEDIUM';
+                else if (severity.includes('LOW')) severity = 'LOW';
+                else severity = 'MEDIUM';
+              }
+              if (!title) { preview.errors.push('Blocker missing title'); continue; }
+              preview.blockers.push({ title, notes, severity });
+              continue;
+            }
+
+            if (type === 'suggest_report') {
+              const name = String(a.name || '').trim();
+              if (name) preview.reportsSuggested.push(name);
+              continue;
+            }
+
+            if (type === 'oracle_query') {
+              const query = String(a.query || '').trim();
+              if (query) preview.oracleQueries.push(query);
+              continue;
+            }
+
+            preview.ignored++;
+          }
+
+          // Dedup suggested reports
+          preview.reportsSuggested = Array.from(new Set(preview.reportsSuggested));
+          preview.oracleQueries = Array.from(new Set(preview.oracleQueries));
+
+          return safeJson(res, 200, { ok: true, preview });
+        }
+
         if (req.url === '/api/agents/apply') {
           const planRaw = String(payload.plan || '').trim();
           if (!planRaw) return safeJson(res, 400, { error: 'Missing plan' });
@@ -761,7 +843,8 @@ async function cmdWeb({ port, dir, open, dev }) {
           if (typeof blockerLog.schemaVersion !== 'number') blockerLog.schemaVersion = 1;
 
           const now = new Date().toISOString();
-          const applied = { tasks: 0, blockers: 0, reportsSuggested: [], oracleQueries: [] };
+          const applyMode = String(payload.mode || 'all').trim();
+          const applied = { tasks: 0, blockers: 0, reportsSuggested: [], oracleQueries: [], mode: applyMode };
 
           function makeId(prefix) {
             const rand = Math.random().toString(16).slice(2, 8);
@@ -793,6 +876,7 @@ async function cmdWeb({ port, dir, open, dev }) {
             const type = String(a.type || '').trim();
 
             if (type === 'create_task') {
+              if (applyMode !== 'all' && applyMode !== 'tasks') continue;
               const description = String(a.description || '').trim();
               if (!description) continue;
               const category = validTaskCats.has(String(a.category || '').trim()) ? String(a.category).trim() : 'DO_NOW';
@@ -811,6 +895,7 @@ async function cmdWeb({ port, dir, open, dev }) {
             }
 
             if (type === 'create_blocker') {
+              if (applyMode !== 'all' && applyMode !== 'blockers') continue;
               const title = String(a.title || '').trim();
               const notes = String(a.notes || '').trim();
               if (!title) continue;
