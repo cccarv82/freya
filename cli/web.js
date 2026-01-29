@@ -691,6 +691,15 @@ function buildHtml(safeDefault) {
                   <div style="height:14px"></div>
 
                   <div class="help"><b>Dica:</b> clique em um relatório em <i>Reports</i> para ver o preview e habilitar publish/copy.</div>
+
+                  <div style="height:14px"></div>
+                  <label>Project slug rules</label>
+                  <textarea id="slugRules" rows="8" placeholder="{ \"rules\": [ { \"contains\": \"fideliza\", \"slug\": \"vivo/fidelizacao\" } ] }" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line); background: rgba(255,255,255,.72); color: var(--text); outline:none; resize: vertical; font-family: var(--mono);"></textarea>
+                  <div class="help">Regras usadas pra inferir <code>projectSlug</code>. Formato JSON (objeto com <code>rules</code>). Editável no estilo Obsidian-friendly.</div>
+                  <div class="stack" style="margin-top:10px">
+                    <button class="btn" onclick="reloadSlugRules()">Reload rules</button>
+                    <button class="btn" onclick="saveSlugRules()">Save rules</button>
+                  </div>
                 </div>
               </div>
 
@@ -992,6 +1001,29 @@ async function cmdWeb({ port, dir, open, dev }) {
           const incoming = payload.settings || {};
           const saved = writeSettings(workspaceDir, incoming);
           return safeJson(res, 200, { ok: true, settings: { discordWebhookUrl: saved.discordWebhookUrl, teamsWebhookUrl: saved.teamsWebhookUrl } });
+        }
+
+
+        if (req.url === '/api/project-slug-map/get') {
+          const map = readProjectSlugMap(workspaceDir);
+          return safeJson(res, 200, { ok: true, map });
+        }
+
+        if (req.url === '/api/project-slug-map/save') {
+          const map = payload.map;
+          if (!map || typeof map !== 'object') return safeJson(res, 400, { error: 'Missing map' });
+          if (!Array.isArray(map.rules)) return safeJson(res, 400, { error: 'map.rules must be an array' });
+
+          // normalize + basic validation
+          const rules = map.rules
+            .map((r) => ({ contains: String(r.contains || '').trim(), slug: String(r.slug || '').trim() }))
+            .filter((r) => r.contains && r.slug);
+
+          const out = { schemaVersion: 1, updatedAt: new Date().toISOString(), rules };
+          const p = projectSlugMapPath(workspaceDir);
+          ensureDir(require('path').dirname(p));
+          fs.writeFileSync(p, JSON.stringify(out, null, 2) + '\n', 'utf8');
+          return safeJson(res, 200, { ok: true, map: out });
         }
 
         if (req.url === '/api/reports/list') {

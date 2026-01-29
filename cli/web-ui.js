@@ -519,6 +519,39 @@
     }
   }
 
+  async function reloadSlugRules() {
+    try {
+      const r = await api('/api/project-slug-map/get', { dir: dirOrDefault() });
+      const el = $('slugRules');
+      if (el) el.value = JSON.stringify(r.map || { rules: [] }, null, 2);
+      setPill('ok', 'rules loaded');
+      setTimeout(() => setPill('ok', 'idle'), 800);
+    } catch (e) {
+      setPill('err', 'rules load failed');
+      setOut(String(e && e.message ? e.message : e));
+    }
+  }
+
+  async function saveSlugRules() {
+    try {
+      const el = $('slugRules');
+      if (!el) return;
+      const raw = String(el.value || '').trim();
+      if (!raw) throw new Error('Rules JSON is empty');
+      let map;
+      try { map = JSON.parse(raw); } catch (e) { throw new Error('Invalid JSON: ' + (e.message || e)); }
+
+      setPill('run', 'saving rules…');
+      const r = await api('/api/project-slug-map/save', { dir: dirOrDefault(), map });
+      if (el) el.value = JSON.stringify(r.map || map, null, 2);
+      setPill('ok', 'rules saved');
+      setTimeout(() => setPill('ok', 'idle'), 800);
+    } catch (e) {
+      setPill('err', 'rules save failed');
+      setOut(String(e && e.message ? e.message : e));
+    }
+  }
+
   async function saveSettings() {
     try {
       saveLocal();
@@ -758,6 +791,8 @@
   window.saveSettings = saveSettings;
   window.refreshReports = refreshReports;
   window.refreshToday = refreshToday;
+  window.reloadSlugRules = reloadSlugRules;
+  window.saveSlugRules = saveSlugRules;
   window.renderReportsList = renderReportsList;
   window.copyOut = copyOut;
   window.copyPath = copyPath;
