@@ -91,6 +91,66 @@ function writeSettings(workspaceDir, settings) {
   return out;
 }
 
+function projectSlugMapPath(workspaceDir) {
+  return path.join(workspaceDir, 'data', 'settings', 'project-slug-map.json');
+}
+
+function readProjectSlugMap(workspaceDir) {
+  const p = projectSlugMapPath(workspaceDir);
+  try {
+    if (!exists(p)) {
+      ensureDir(path.dirname(p));
+      const defaults = {
+        schemaVersion: 1,
+        updatedAt: new Date().toISOString(),
+        rules: [
+          { contains: 'fideliza', slug: 'vivo/fidelizacao' },
+          { contains: 'bnpl', slug: 'vivo/bnpl' },
+          { contains: 'dpgc', slug: 'vivo/bnpl/dpgc' },
+          { contains: 'vivo+', slug: 'vivo/vivoplus' }
+        ]
+      };
+      fs.writeFileSync(p, JSON.stringify(defaults, null, 2) + '\n', 'utf8');
+      return defaults;
+    }
+    const json = JSON.parse(fs.readFileSync(p, 'utf8'));
+    if (!json || !Array.isArray(json.rules)) return { schemaVersion: 1, rules: [] };
+    return json;
+  } catch {
+    return { schemaVersion: 1, rules: [] };
+  }
+}
+
+function inferProjectSlug(text, map) {
+  const t = String(text || '').toLowerCase();
+  if (!t.trim()) return '';
+
+  let base = '';
+  const rules = (map && Array.isArray(map.rules)) ? map.rules : [];
+  for (const r of rules) {
+    if (!r) continue;
+    const needle = String(r.contains || '').toLowerCase().trim();
+    const slug = String(r.slug || '').trim();
+    if (!needle || !slug) continue;
+    if (t.includes(needle)) { base = slug; break; }
+  }
+
+  // CHG tags
+  const chg = (t.match(/\bchg\s*0*\d{4,}\b/i) || [])[0];
+  const chgNorm = chg ? chg.toLowerCase().replace(/\s+/g, '') : '';
+
+  // If no base but looks like Vivo context, at least prefix vivo
+  if (!base && (t.includes('vivo') || t.includes('vivo+'))) base = 'vivo';
+
+  if (base && chgNorm) {
+    // keep numeric id
+    const id = chgNorm.replace(/[^0-9]/g, '');
+    if (id) base = base.replace(/\/+$/g, '') + '/chg' + id;
+  }
+
+  return base;
+}
+
 function listReports(workspaceDir) {
   const dir = path.join(workspaceDir, 'docs', 'reports');
   if (!exists(dir)) return [];
@@ -1222,6 +1282,7 @@ async function cmdWeb({ port, dir, open, dev }) {
           const now = new Date().toISOString();
           const applyMode = String(payload.mode || 'all').trim();
           const applied = { tasks: 0, blockers: 0, tasksSkipped: 0, blockersSkipped: 0, reportsSuggested: [], oracleQueries: [], mode: applyMode };
+          const slugMap = readProjectSlugMap(workspaceDir);
 
           function makeId(prefix) {
             const rand = Math.random().toString(16).slice(2, 8);
@@ -1256,7 +1317,7 @@ async function cmdWeb({ port, dir, open, dev }) {
               if (applyMode !== 'all' && applyMode !== 'tasks') continue;
               const description = normalizeWhitespace(a.description);
               if (!description) continue;
-              const projectSlug = String(a.projectSlug || '').trim();
+              const projectSlug = String(a.projectSlug || '').trim() || inferProjectSlug(description, slugMap);
               const key = sha1(normalizeTextForKey((projectSlug ? projectSlug + ' ' : '') + description));
               if (existingTaskKeys24h.has(key)) { applied.tasksSkipped++; continue; }
               const category = validTaskCats.has(String(a.category || '').trim()) ? String(a.category).trim() : 'DO_NOW';
@@ -1278,7 +1339,7 @@ async function cmdWeb({ port, dir, open, dev }) {
             if (type === 'create_blocker') {
               if (applyMode !== 'all' && applyMode !== 'blockers') continue;
               const title = normalizeWhitespace(a.title);
-              const projectSlug = String(a.projectSlug || '').trim();
+              const projectSlug = String(a.projectSlug || '').trim() || inferProjectSlug(title + ' ' + normalizeWhitespace(a.notes), slugMap);
               const key = sha1(normalizeTextForKey((projectSlug ? projectSlug + ' ' : '') + title));
               if (existingBlockerKeys24h.has(key)) { applied.blockersSkipped++; continue; }
               const notes = normalizeWhitespace(a.notes);
