@@ -4,7 +4,16 @@
 
 (function () {
   const $ = (id) => document.getElementById(id);
-  undefined
+  const state = {
+    lastReportPath: null,
+    lastText: '',
+    reports: [],
+    selectedReport: null,
+    lastPlan: '',
+    lastApplied: null,
+    autoApply: true,
+    autoRunReports: false
+  };
 
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
