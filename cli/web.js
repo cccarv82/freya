@@ -182,6 +182,52 @@ function postTeamsWebhook(url, text) {
   return postJson(url, { text });
 }
 
+function escapeJsonControlChars(jsonText) {
+  // Replace unescaped control chars inside JSON string literals with safe escapes.
+  // Handles Copilot outputs where newlines/tabs leak into string values.
+  const out = [];
+  let inString = false;
+  let esc = false;
+
+  for (let i = 0; i < jsonText.length; i++) {
+    const ch = jsonText[i];
+    const code = ch.charCodeAt(0);
+
+    if (esc) {
+      out.push(ch);
+      esc = false;
+      continue;
+    }
+
+    if (ch === '\\') {
+      out.push(ch);
+      esc = true;
+      continue;
+    }
+
+    if (ch === '"') {
+      out.push(ch);
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) {
+      if (code === 10) { out.push('\\n'); continue; }
+      if (code === 13) { out.push('\\r'); continue; }
+      if (code === 9) { out.push('\\t'); continue; }
+      if (code >= 0 && code < 32) {
+        const hex = code.toString(16).padStart(2, '0');
+        out.push('\\u00' + hex);
+        continue;
+      }
+    }
+
+    out.push(ch);
+  }
+
+  return out.join('');
+}
+
 async function publishRobust(webhookUrl, text, opts = {}) {
   const u = new URL(webhookUrl);
   const isDiscord = u.hostname.includes('discord.com') || u.hostname.includes('discordapp.com');
@@ -353,9 +399,7 @@ function buildHtml(safeDefault) {
           <div class="sideGroup">
             <div class="sideTitle">Workspace</div>
             <button class="btn sideBtn" onclick="pickDir()">Select workspace…</button>
-            <button class="btn primary sideBtn" onclick="doInit()">Init workspace</button>
             <button class="btn sideBtn" onclick="doUpdate()">Update (preserve data/logs)</button>
-            <button class="btn sideBtn" onclick="doHealth()">Health</button>
             <button class="btn sideBtn" onclick="doMigrate()">Migrate</button>
             <div style="height:10px"></div>
             <div class="help">Dica: se você já tem uma workspace antiga, use Update. Por padrão, data/logs não são sobrescritos.</div>
@@ -836,7 +880,15 @@ async function cmdWeb({ port, dir, open, dev }) {
           try {
             plan = JSON.parse(jsonText);
           } catch (e) {
-            return safeJson(res, 400, { error: 'Plan is not valid JSON', details: e.message || String(e) });
+            try {
+              plan = JSON.parse(escapeJsonControlChars(jsonText));
+            } catch (e2) {
+              return safeJson(res, 400, {
+                error: 'Plan is not valid JSON',
+                details: (e2 && e2.message) ? e2.message : (e && e.message ? e.message : String(e)),
+                hint: 'O planner gerou caracteres de controle dentro de strings (ex.: quebra de linha). Reexecute o planner ou escape quebras de linha como \\n.'
+              });
+            }
           }
 
           const actions = Array.isArray(plan.actions) ? plan.actions : [];
