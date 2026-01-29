@@ -873,6 +873,7 @@ function html(defaultDir) {
     let inCode = false;
     let inList = false;
 
+    const NL = String.fromCharCode(10);
     const BT = String.fromCharCode(96); // backtick
     const FENCE = BT + BT + BT;
     const inlineCodeRe = /\x60([^\x60]+)\x60/g;
@@ -895,11 +896,11 @@ function html(defaultDir) {
       }
 
       if (inCode) {
-        html += escapeHtml(line) + '\n';
+        html += escapeHtml(line) + NL;
         continue;
       }
 
-      const h = line.match(/^(#{1,3})\s+(.*)$/);
+      const h = line.match(/^(#{1,3})[ \t]+(.*)$/);
       if (h) {
         closeList();
         const lvl = h[1].length;
@@ -907,7 +908,7 @@ function html(defaultDir) {
         continue;
       }
 
-      const li = line.match(/^\s*[-*]\s+(.*)$/);
+      const li = line.match(/^[ \t]*[-*][ \t]+(.*)$/);
       if (li) {
         if (!inList) { html += '<ul class="md-ul">'; inList = true; }
         const content = escapeHtml(li[1]).replace(inlineCodeRe, '<code class="md-inline">$1</code>');
