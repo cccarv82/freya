@@ -48,6 +48,14 @@ async function run() {
     assert.equal(js.status, 200);
     assert.ok(js.body.includes('window.doInit'), 'app.js should bind handlers');
 
+    // Ensure the JS parses (avoid shipping SyntaxError that breaks all onclick handlers)
+    const vm = require('vm');
+    try {
+      new vm.Script(js.body);
+    } catch (e) {
+      throw new Error('app.js is not valid JS: ' + (e && e.message ? e.message : e));
+    }
+
     const css = await get(base + '/app.css');
     assert.equal(css.status, 200);
     assert.ok(css.body.includes(':root'), 'app.css should contain CSS');
