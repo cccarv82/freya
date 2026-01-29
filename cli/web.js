@@ -954,72 +954,160 @@ function isoNow() {
   return new Date().toISOString();
 }
 
+function daysAgoIso(n) {
+  return new Date(Date.now() - n * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function readJsonOrNull(p) {
+  try {
+    return JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function writeJson(p, obj) {
+  ensureDir(path.dirname(p));
+  fs.writeFileSync(p, JSON.stringify(obj, null, 2) + '\n', 'utf8');
+}
+
+function looksLikeDevSeed(json) {
+  if (!json || typeof json !== 'object') return false;
+  // Heuristic: any id ends with demo marker or source is dev-seed
+  const dump = JSON.stringify(json);
+  return dump.includes('dev-seed') || dump.includes('t-demo-') || dump.includes('b-demo-') || dump.includes('c-demo-');
+}
+
 function seedDevWorkspace(workspaceDir) {
-  // Only create if missing; never overwrite user content.
+  // Safe by default:
+  // - create missing demo files
+  // - if file exists and looks like prior dev-seed, upgrade it to richer demo
   ensureDir(path.join(workspaceDir, 'data', 'tasks'));
   ensureDir(path.join(workspaceDir, 'data', 'career'));
   ensureDir(path.join(workspaceDir, 'data', 'blockers'));
   ensureDir(path.join(workspaceDir, 'data', 'Clients', 'acme', 'rocket'));
+  ensureDir(path.join(workspaceDir, 'data', 'Clients', 'vivo', '5g'));
   ensureDir(path.join(workspaceDir, 'logs', 'daily'));
 
   const taskLog = path.join(workspaceDir, 'data', 'tasks', 'task-log.json');
-  if (!exists(taskLog)) {
-    fs.writeFileSync(taskLog, JSON.stringify({
+  const taskExisting = readJsonOrNull(taskLog);
+  if (!exists(taskLog) || looksLikeDevSeed(taskExisting)) {
+    writeJson(taskLog, {
       schemaVersion: 1,
       tasks: [
-        { id: 't-demo-1', description: 'Preparar update executivo', category: 'DO_NOW', status: 'PENDING', createdAt: isoNow(), priority: 'high' },
-        { id: 't-demo-2', description: 'Revisar PR de integração Teams', category: 'SCHEDULE', status: 'PENDING', createdAt: isoNow(), priority: 'medium' },
-        { id: 't-demo-3', description: 'Rodar retro e registrar aprendizados', category: 'DO_NOW', status: 'COMPLETED', createdAt: isoNow(), completedAt: isoNow(), priority: 'low' }
+        // Completed in last 7 days
+        { id: 't-demo-ship-1', description: 'Publicar pacote @cccarv82/freya no npm (CI)', category: 'DO_NOW', status: 'COMPLETED', createdAt: daysAgoIso(6), completedAt: daysAgoIso(5), priority: 'high', projectSlug: 'acme-rocket' },
+        { id: 't-demo-ship-2', description: 'Adicionar UI web local (freya web)', category: 'DO_NOW', status: 'COMPLETED', createdAt: daysAgoIso(4), completedAt: daysAgoIso(3), priority: 'high', projectSlug: 'acme-rocket' },
+        { id: 't-demo-ship-3', description: 'Corrigir publish via npm token/2FA', category: 'DO_NOW', status: 'COMPLETED', createdAt: daysAgoIso(3), completedAt: daysAgoIso(2), priority: 'medium' },
+        // Pending
+        { id: 't-demo-now-1', description: 'Refinar UI/UX do painel web (layout + preview)', category: 'DO_NOW', status: 'PENDING', createdAt: daysAgoIso(1), priority: 'high' },
+        { id: 't-demo-now-2', description: 'Melhorar publish no Teams (cards + chunks)', category: 'DO_NOW', status: 'PENDING', createdAt: daysAgoIso(1), priority: 'medium' },
+        { id: 't-demo-schedule-1', description: 'Criar modo "freya web" com preview Markdown', category: 'SCHEDULE', status: 'PENDING', createdAt: daysAgoIso(0), priority: 'medium' },
+        { id: 't-demo-delegate-1', description: 'Pedir feedback de 3 usuários beta (UX)', category: 'DELEGATE', status: 'PENDING', createdAt: daysAgoIso(0), priority: 'low' }
       ]
-    }, null, 2) + '\n', 'utf8');
+    });
   }
 
   const careerLog = path.join(workspaceDir, 'data', 'career', 'career-log.json');
-  if (!exists(careerLog)) {
-    fs.writeFileSync(careerLog, JSON.stringify({
+  const careerExisting = readJsonOrNull(careerLog);
+  if (!exists(careerLog) || looksLikeDevSeed(careerExisting)) {
+    writeJson(careerLog, {
       schemaVersion: 1,
       entries: [
-        { id: 'c-demo-1', date: isoDate(), type: 'Achievement', description: 'Publicou o CLI @cccarv82/freya com init/web', tags: ['shipping', 'tooling'], source: 'dev-seed' },
-        { id: 'c-demo-2', date: isoDate(), type: 'Feedback', description: 'Feedback: UX do painel web está “muito promissor”', tags: ['product'], source: 'dev-seed' }
+        { id: 'c-demo-1', date: daysAgoIso(6).slice(0, 10), type: 'Achievement', description: 'Estruturou pipeline de publicação npm com tags e NPM_TOKEN', tags: ['devops', 'release'], source: 'dev-seed' },
+        { id: 'c-demo-2', date: daysAgoIso(4).slice(0, 10), type: 'Feedback', description: 'Feedback: “Setup via npx ficou ridiculamente simples.”', tags: ['product', 'ux'], source: 'dev-seed' },
+        { id: 'c-demo-3', date: daysAgoIso(2).slice(0, 10), type: 'Achievement', description: 'Entregou modo web local com geração de relatórios e publish.', tags: ['shipping', 'frontend'], source: 'dev-seed' },
+        { id: 'c-demo-4', date: daysAgoIso(1).slice(0, 10), type: 'Goal', description: 'Validar o produto com 5 times e transformar em serviço B2B.', tags: ['business'], source: 'dev-seed' }
       ]
-    }, null, 2) + '\n', 'utf8');
+    });
   }
 
   const blockerLog = path.join(workspaceDir, 'data', 'blockers', 'blocker-log.json');
-  if (!exists(blockerLog)) {
-    fs.writeFileSync(blockerLog, JSON.stringify({
+  const blockerExisting = readJsonOrNull(blockerLog);
+  if (!exists(blockerLog) || looksLikeDevSeed(blockerExisting)) {
+    writeJson(blockerLog, {
       schemaVersion: 1,
       blockers: [
-        { id: 'b-demo-1', title: 'Webhook do Teams falhando em ambientes com 2FA', description: 'Ajustar token / payload', createdAt: isoNow(), status: 'OPEN', severity: 'HIGH', nextAction: 'Validar payload e limites' },
-        { id: 'b-demo-2', title: 'Definir template de status report por cliente', description: 'Padronizar headings', createdAt: isoNow(), status: 'MITIGATING', severity: 'MEDIUM' }
+        { id: 'b-demo-crit-1', title: 'Spawn EINVAL no Windows ao rodar npx via server', description: 'Ajustar execução via cmd.exe /c', createdAt: daysAgoIso(2), status: 'RESOLVED', severity: 'CRITICAL', resolvedAt: daysAgoIso(1), nextAction: 'Validar em ambiente real' },
+        { id: 'b-demo-high-1', title: 'Teams webhook truncando mensagens longas', description: 'Implementar chunking + cards', createdAt: daysAgoIso(1), status: 'OPEN', severity: 'HIGH', nextAction: 'Dividir em blocos e enviar sequencialmente' },
+        { id: 'b-demo-med-1', title: 'Preview Markdown no web (render)', description: 'Adicionar render de Markdown no front', createdAt: daysAgoIso(1), status: 'MITIGATING', severity: 'MEDIUM', nextAction: 'Render simples (headers/lists/code) sem deps' },
+        { id: 'b-demo-low-1', title: 'Polish: remover duplicações na UI', description: 'Consolidar ações na sidebar ou na página', createdAt: daysAgoIso(0), status: 'OPEN', severity: 'LOW' }
       ]
-    }, null, 2) + '\n', 'utf8');
+    });
   }
 
-  const projectStatus = path.join(workspaceDir, 'data', 'Clients', 'acme', 'rocket', 'status.json');
-  if (!exists(projectStatus)) {
-    fs.writeFileSync(projectStatus, JSON.stringify({
+  // Project statuses
+  const projectStatus1 = path.join(workspaceDir, 'data', 'Clients', 'acme', 'rocket', 'status.json');
+  const ps1 = readJsonOrNull(projectStatus1);
+  if (!exists(projectStatus1) || looksLikeDevSeed(ps1)) {
+    writeJson(projectStatus1, {
       schemaVersion: 1,
       client: 'Acme',
       project: 'Rocket',
       currentStatus: 'Green — progressing as planned',
-      lastUpdated: isoNow(),
+      lastUpdated: daysAgoIso(0),
       active: true,
       history: [
-        { date: isoNow(), type: 'Status', content: 'Launched stage 1', source: 'dev-seed' },
-        { date: isoNow(), type: 'Risk', content: 'Potential delay on vendor dependency', source: 'dev-seed' }
+        { date: daysAgoIso(6), type: 'Decision', content: 'Adotar publish via tags vX.Y.Z no GitHub', source: 'dev-seed' },
+        { date: daysAgoIso(4), type: 'Status', content: 'Painel web MVP subiu localmente (freya web)', source: 'dev-seed' },
+        { date: daysAgoIso(2), type: 'Risk', content: 'Windows spawn issues ao chamar npx (corrigir)', source: 'dev-seed' },
+        { date: daysAgoIso(1), type: 'Status', content: 'Correções de compatibilidade Windows + auto-seed', source: 'dev-seed' },
+        { date: daysAgoIso(0), type: 'Status', content: 'UI redesign inspirado em apps modernos (tema claro + toggle)', source: 'dev-seed' }
       ]
-    }, null, 2) + '\n', 'utf8');
+    });
   }
 
-  const dailyLog = path.join(workspaceDir, 'logs', 'daily', `${isoDate()}.md`);
-  if (!exists(dailyLog)) {
-    fs.writeFileSync(dailyLog, `# Daily Log ${isoDate()}\n\n## [09:15] Raw Input\nReunião com a Acme. Tudo verde, mas preciso alinhar com fornecedor.\n\n## [16:40] Raw Input\nTerminei o relatório SM e publiquei no Discord.\n`, 'utf8');
+  const projectStatus2 = path.join(workspaceDir, 'data', 'Clients', 'vivo', '5g', 'status.json');
+  const ps2 = readJsonOrNull(projectStatus2);
+  if (!exists(projectStatus2) || looksLikeDevSeed(ps2)) {
+    writeJson(projectStatus2, {
+      schemaVersion: 1,
+      client: 'Vivo',
+      project: '5G',
+      currentStatus: 'Amber — dependency on vendor payload format',
+      lastUpdated: daysAgoIso(1),
+      active: true,
+      history: [
+        { date: daysAgoIso(5), type: 'Status', content: 'Integração inicial concluída; aguardando webhook do Teams', source: 'dev-seed' },
+        { date: daysAgoIso(3), type: 'Blocker', content: 'Falha intermitente no webhook em ambiente com 2FA', source: 'dev-seed' },
+        { date: daysAgoIso(1), type: 'Decision', content: 'Implementar chunking e fallback de publish', source: 'dev-seed' }
+      ]
+    });
+  }
+
+  // Daily logs: create today and yesterday if missing
+  const today = isoDate();
+  const yesterday = isoDate(new Date(Date.now() - 24 * 60 * 60 * 1000));
+
+  const daily1 = path.join(workspaceDir, 'logs', 'daily', `${yesterday}.md`);
+  if (!exists(daily1)) {
+    fs.writeFileSync(
+      daily1,
+      `# Daily Log ${yesterday}\n\n## [09:10] Raw Input\nHoje preciso melhorar a UX do web e destravar publish no Teams.\n\n## [11:25] Raw Input\nEstou travado no payload do Teams; vou dividir mensagens em chunks.\n\n## [18:05] Raw Input\nTerminei a correção do Windows (spawn) e rodei testes.\n`,
+      'utf8'
+    );
+  }
+
+  const daily2 = path.join(workspaceDir, 'logs', 'daily', `${today}.md`);
+  if (!exists(daily2)) {
+    fs.writeFileSync(
+      daily2,
+      `# Daily Log ${today}\n\n## [09:05] Raw Input\nReunião com Acme: projeto Rocket verde, foco em polish do produto.\n\n## [14:20] Raw Input\nPreciso preparar update executivo e publicar no Discord.\n\n## [17:45] Raw Input\nFechei os blockers críticos e gerei relatório SM semanal.\n`,
+      'utf8'
+    );
   }
 
   return {
     seeded: true,
-    paths: { taskLog, careerLog, blockerLog, projectStatus, dailyLog }
+    paths: {
+      taskLog,
+      careerLog,
+      blockerLog,
+      projectStatus1,
+      projectStatus2,
+      daily1,
+      daily2
+    }
   };
 }
 
