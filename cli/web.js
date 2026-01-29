@@ -6,11 +6,13 @@ const path = require('path');
 const { spawn } = require('child_process');
 
 function guessNpmCmd() {
-  return process.platform === 'win32' ? 'npm.cmd' : 'npm';
+  // We'll execute via cmd.exe on Windows for reliability.
+  return process.platform === 'win32' ? 'npm' : 'npm';
 }
 
 function guessNpxCmd() {
-  return process.platform === 'win32' ? 'npx.cmd' : 'npx';
+  // We'll execute via cmd.exe on Windows for reliability.
+  return process.platform === 'win32' ? 'npx' : 'npx';
 }
 
 function guessNpxYesFlag() {
@@ -99,8 +101,15 @@ function readBody(req) {
 function run(cmd, args, cwd) {
   return new Promise((resolve) => {
     let child;
+
     try {
-      child = spawn(cmd, args, { cwd, shell: false, env: process.env });
+      // On Windows, reliably execute CLI tools through cmd.exe.
+      if (process.platform === 'win32' && (cmd === 'npx' || cmd === 'npm')) {
+        const comspec = process.env.ComSpec || 'cmd.exe';
+        child = spawn(comspec, ['/d', '/s', '/c', cmd, ...args], { cwd, shell: false, env: process.env });
+      } else {
+        child = spawn(cmd, args, { cwd, shell: false, env: process.env });
+      }
     } catch (e) {
       return resolve({ code: 1, stdout: '', stderr: e.message || String(e) });
     }
@@ -115,7 +124,7 @@ function run(cmd, args, cwd) {
       stderr += d.toString();
     });
 
-    // Prevent unhandled error event (e.g., ENOENT on Windows when cmd not found)
+    // Prevent unhandled error event (e.g., ENOENT/EINVAL)
     child.on('error', (e) => {
       stderr += `\n${e.message || String(e)}`;
       resolve({ code: 1, stdout, stderr });
