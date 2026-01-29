@@ -225,10 +225,21 @@
       headers: body ? { 'Content-Type': 'application/json' } : {},
       body: body ? JSON.stringify(body) : undefined
     });
-    const json = await res.json();
+
+    // Read as text first so we can surface errors even if backend returns HTML/plaintext
+    const raw = await res.text();
+    let json = null;
+    try {
+      json = raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      const snippet = (raw || '').slice(0, 1200);
+      throw new Error(`Non-JSON response (${res.status} ${res.statusText}) from ${p}:\n\n${snippet}`);
+    }
+
     if (!res.ok) {
       const detail = json.details ? ('\n' + json.details) : '';
-      throw new Error((json.error || 'Request failed') + detail);
+      const err = (json.error || `Request failed (${res.status})`) + detail;
+      throw new Error(err);
     }
     return json;
   }
@@ -348,7 +359,8 @@
       setPill('ok', 'init ok');
     } catch (e) {
       setPill('err', 'init failed');
-      setOut(String(e && e.message ? e.message : e));
+      const msg = e && (e.stack || e.message) ? (e.stack || e.message) : String(e);
+      setOut(msg);
     }
   }
 
