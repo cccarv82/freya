@@ -20,6 +20,24 @@ F.R.E.Y.A. é um sistema de agentes de IA projetado para organizar seu trabalho,
 
 Você pode usar a FREYA como um CLI para **inicializar uma workspace** completa (agents + scripts + data) em qualquer diretório.
 
+## 🚢 Publicação no npm (maintainers)
+
+Este repositório suporta publicação automática via GitHub Actions.
+
+### Pré-requisitos
+1) Ter permissão de publish no pacote `@cccarv82/freya` no npm.
+2) Criar o secret no GitHub: `NPM_TOKEN` (Automation token do npm com permissão de publish).
+
+### Como publicar
+1) Atualize a versão e crie uma tag `vX.Y.Z`:
+```bash
+npm version patch
+# ou minor/major
+
+git push --follow-tags
+```
+2) A Action `npm-publish` roda no push da tag e executa `npm publish --access public`.
+
 ### Via npx (recomendado)
 ```bash
 npx @cccarv82/freya init
