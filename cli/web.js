@@ -59,6 +59,37 @@ function newestFile(dir, prefix) {
   return files[0]?.p || null;
 }
 
+function settingsPath(workspaceDir) {
+  return path.join(workspaceDir, 'data', 'settings', 'settings.json');
+}
+
+function readSettings(workspaceDir) {
+  const p = settingsPath(workspaceDir);
+  try {
+    if (!exists(p)) return { discordWebhookUrl: '', teamsWebhookUrl: '' };
+    const json = JSON.parse(fs.readFileSync(p, 'utf8'));
+    return {
+      discordWebhookUrl: json.discordWebhookUrl || '',
+      teamsWebhookUrl: json.teamsWebhookUrl || ''
+    };
+  } catch {
+    return { discordWebhookUrl: '', teamsWebhookUrl: '' };
+  }
+}
+
+function writeSettings(workspaceDir, settings) {
+  const p = settingsPath(workspaceDir);
+  ensureDir(path.dirname(p));
+  const out = {
+    schemaVersion: 1,
+    updatedAt: new Date().toISOString(),
+    discordWebhookUrl: settings.discordWebhookUrl || '',
+    teamsWebhookUrl: settings.teamsWebhookUrl || ''
+  };
+  fs.writeFileSync(p, JSON.stringify(out, null, 2) + '\n', 'utf8');
+  return out;
+}
+
 function listReports(workspaceDir) {
   const dir = path.join(workspaceDir, 'docs', 'reports');
   if (!exists(dir)) return [];
@@ -750,10 +781,11 @@ function html(defaultDir) {
 
                 <label>Teams webhook URL</label>
                 <input id="teams" placeholder="https://..." />
-                <div class="help">O publish usa incoming webhooks. (Depois a gente evolui para anexos/chunks.)</div>
+                <div class="help">Os webhooks ficam salvos na workspace em <code>data/settings/settings.json</code>.</div>
 
                 <div style="height:10px"></div>
                 <div class="stack">
+                  <button class="btn" onclick="saveSettings()">Save settings</button>
                   <button class="btn" onclick="publish('discord')">Publish selected → Discord</button>
                   <button class="btn" onclick="publish('teams')">Publish selected → Teams</button>
                 </div>
@@ -927,14 +959,10 @@ function html(defaultDir) {
 
   function saveLocal() {
     localStorage.setItem('freya.dir', $('dir').value);
-    localStorage.setItem('freya.discord', $('discord').value);
-    localStorage.setItem('freya.teams', $('teams').value);
   }
 
   function loadLocal() {
     $('dir').value = (window.__FREYA_DEFAULT_DIR && window.__FREYA_DEFAULT_DIR !== '__FREYA_DEFAULT_DIR__') ? window.__FREYA_DEFAULT_DIR : (localStorage.getItem('freya.dir') || './freya');
-    $('discord').value = localStorage.getItem('freya.discord') || '';
-    $('teams').value = localStorage.getItem('freya.teams') || '';
     $('sidePath').textContent = $('dir').value || './freya';
     // Always persist the current run's default dir to avoid stale values
     localStorage.setItem('freya.dir', $('dir').value || './freya');
@@ -1081,6 +1109,24 @@ function html(defaultDir) {
     }
   }
 
+  async function saveSettings() {
+    try {
+      saveLocal();
+      setPill('run','saving…');
+      await api('/api/settings/save', {
+        dir: dirOrDefault(),
+        settings: {
+          discordWebhookUrl: $('discord').value.trim(),
+          teamsWebhookUrl: $('teams').value.trim()
+        }
+      });
+      setPill('ok','saved');
+      setTimeout(() => setPill('ok','idle'), 800);
+    } catch (e) {
+      setPill('err','save failed');
+    }
+  }
+
   async function publish(target) {
     try {
       saveLocal();
@@ -1100,7 +1146,25 @@ function html(defaultDir) {
   applyTheme(localStorage.getItem('freya.theme') || 'light');
   $('chipPort').textContent = location.host;
   loadLocal();
-  refreshReports();
+
+  // Load persisted settings from the workspace
+  (async () => {
+    try {
+      const r = await api('/api/defaults', { dir: dirOrDefault() });
+      if (r && r.workspaceDir) {
+        $('dir').value = r.workspaceDir;
+        $('sidePath').textContent = r.workspaceDir;
+      }
+      if (r && r.settings) {
+        $('discord').value = r.settings.discordWebhookUrl || '';
+        $('teams').value = r.settings.teamsWebhookUrl || '';
+      }
+    } catch (e) {
+      // ignore
+    }
+    refreshReports();
+  })();
+
   setPill('ok','idle');
 </script>
 </body>
@@ -1300,6 +1364,18 @@ async function cmdWeb({ port, dir, open, dev }) {
         if (req.url === '/api/pick-dir') {
           const picked = await pickDirectoryNative();
           return safeJson(res, 200, { dir: picked });
+        }
+
+        if (req.url === '/api/defaults') {
+          const settings = readSettings(workspaceDir);
+          const reports = listReports(workspaceDir).slice(0, 20);
+          return safeJson(res, 200, { workspaceDir, settings, reports });
+        }
+
+        if (req.url === '/api/settings/save') {
+          const incoming = payload.settings || {};
+          const saved = writeSettings(workspaceDir, incoming);
+          return safeJson(res, 200, { ok: true, settings: { discordWebhookUrl: saved.discordWebhookUrl, teamsWebhookUrl: saved.teamsWebhookUrl } });
         }
 
         if (req.url === '/api/reports/list') {
