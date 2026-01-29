@@ -417,6 +417,29 @@
     }
   }
 
+  async function saveInbox() {
+    try {
+      const ta = $('inboxText');
+      if (!ta) return;
+      const text = (ta.value || '').trim();
+      if (!text) {
+        setPill('err', 'empty');
+        return;
+      }
+      setPill('run', 'saving…');
+      const r = await api('/api/inbox/add', { dir: dirOrDefault(), text });
+      ta.value = '';
+      setPill('ok', 'saved');
+      setTimeout(() => setPill('ok', 'idle'), 800);
+      // Optionally refresh reports (if daily runs later, file is already there)
+      if (r && r.file) {
+        // noop
+      }
+    } catch (e) {
+      setPill('err', 'save failed');
+    }
+  }
+
   // init
   applyTheme(localStorage.getItem('freya.theme') || 'light');
   $('chipPort').textContent = location.host;
@@ -459,4 +482,5 @@
   window.downloadSelected = downloadSelected;
   window.clearOut = clearOut;
   window.toggleTheme = toggleTheme;
+  window.saveInbox = saveInbox;
 })();

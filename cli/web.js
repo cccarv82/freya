@@ -291,6 +291,14 @@ function buildHtml(safeDefault) {
             <div style="height:8px"></div>
             <div class="help"><span class="k">--port</span> muda a porta (default 3872).</div>
           </div>
+
+          <div class="sideGroup">
+            <div class="sideTitle">Daily Input</div>
+            <textarea id="inboxText" rows="6" placeholder="Cole aqui updates do dia (status, blockers, decisões, ideias)…" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line); background: rgba(255,255,255,.72); color: var(--text); outline:none; resize: vertical;"></textarea>
+            <div style="height:10px"></div>
+            <button class="btn sideBtn" onclick="saveInbox()">Save to Daily Log</button>
+            <div class="help">Isso salva o raw input em <code>logs/daily/YYYY-MM-DD.md</code> (timestamped). Depois vamos ligar o pipeline/agents.</div>
+          </div>
         </aside>
 
         <main class="main">
@@ -650,6 +658,24 @@ async function cmdWeb({ port, dir, open, dev }) {
           const full = path.join(workspaceDir, rel);
           if (!exists(full)) return safeJson(res, 404, { error: 'Report not found' });
           return safeJson(res, 200, { relPath: rel, fullPath: full });
+        }
+
+        if (req.url === '/api/inbox/add') {
+          const text = String(payload.text || '').trim();
+          if (!text) return safeJson(res, 400, { error: 'Missing text' });
+
+          const d = isoDate();
+          const file = path.join(workspaceDir, 'logs', 'daily', `${d}.md`);
+          ensureDir(path.dirname(file));
+
+          const stamp = new Date();
+          const hh = String(stamp.getHours()).padStart(2, '0');
+          const mm = String(stamp.getMinutes()).padStart(2, '0');
+
+          const block = `\n\n## [${hh}:${mm}] Raw Input\n${text}\n`;
+          fs.appendFileSync(file, block, 'utf8');
+
+          return safeJson(res, 200, { ok: true, file: path.relative(workspaceDir, file).replace(/\\/g, '/'), appended: true });
         }
 
         if (req.url === '/api/reports/open') {
