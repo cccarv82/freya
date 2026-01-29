@@ -1191,6 +1191,21 @@ function html(defaultDir) {
     }
   }
 
+  // Expose handlers for inline onclick="..." attributes
+  window.doInit = doInit;
+  window.doUpdate = doUpdate;
+  window.doHealth = doHealth;
+  window.doMigrate = doMigrate;
+  window.pickDir = pickDir;
+  window.runReport = runReport;
+  window.publish = publish;
+  window.saveSettings = saveSettings;
+  window.refreshReports = refreshReports;
+  window.renderReportsList = renderReportsList;
+  window.copyOut = copyOut;
+  window.clearOut = clearOut;
+  window.toggleTheme = toggleTheme;
+
   // init
   applyTheme(localStorage.getItem('freya.theme') || 'light');
   $('chipPort').textContent = location.host;
