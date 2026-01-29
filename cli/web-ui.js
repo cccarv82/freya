@@ -4,7 +4,7 @@
 
 (function () {
   const $ = (id) => document.getElementById(id);
-  const state = { lastReportPath: null, lastText: '', reports: [], selectedReport: null, lastPlan: '', lastApplied: null };
+  const state = { lastReportPath: null, lastText: '', reports: [], selectedReport: null, lastPlan: '', lastApplied: null, autoApply: true };
 
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
@@ -187,9 +187,17 @@
 
   function saveLocal() {
     localStorage.setItem('freya.dir', $('dir').value);
+    try { localStorage.setItem('freya.autoApply', state.autoApply ? '1' : '0'); } catch {}
   }
 
   function loadLocal() {
+    try {
+      const v = localStorage.getItem('freya.autoApply');
+      if (v !== null) state.autoApply = v === '1';
+      const cb = $('autoApply');
+      if (cb) cb.checked = !!state.autoApply;
+    } catch {}
+
     const def = (window.__FREYA_DEFAULT_DIR && window.__FREYA_DEFAULT_DIR !== '__FREYA_DEFAULT_DIR__')
       ? window.__FREYA_DEFAULT_DIR
       : (localStorage.getItem('freya.dir') || './freya');
@@ -443,6 +451,12 @@
     }
   }
 
+  function toggleAutoApply() {
+    const cb = $('autoApply');
+    state.autoApply = cb ? !!cb.checked : true;
+    try { localStorage.setItem('freya.autoApply', state.autoApply ? '1' : '0'); } catch {}
+  }
+
   async function saveAndPlan() {
     try {
       const ta = $('inboxText');
@@ -594,6 +608,7 @@
   window.toggleTheme = toggleTheme;
   window.saveInbox = saveInbox;
   window.saveAndPlan = saveAndPlan;
+  window.toggleAutoApply = toggleAutoApply;
   window.applyPlan = applyPlan;
   window.runSuggestedReports = runSuggestedReports;
 })();
