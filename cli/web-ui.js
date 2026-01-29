@@ -4,7 +4,7 @@
 
 (function () {
   const $ = (id) => document.getElementById(id);
-  const state = { lastReportPath: null, lastText: '', reports: [], selectedReport: null };
+  const state = { lastReportPath: null, lastText: '', reports: [], selectedReport: null, lastPlan: '' };
 
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme);
@@ -452,6 +452,8 @@
       setPill('run', 'planning…');
       const r = await api('/api/agents/plan', { dir: dirOrDefault(), text });
 
+      state.lastPlan = r.plan || '';
+
       // Show plan output in Preview panel
       setOut('## Agent Plan (draft)\n\n' + (r.plan || ''));
       ta.value = '';
@@ -460,6 +462,23 @@
       setTimeout(() => setPill('ok', 'idle'), 800);
     } catch (e) {
       setPill('err', 'plan failed');
+    }
+  }
+
+  async function applyPlan() {
+    try {
+      if (!state.lastPlan) {
+        setPill('err', 'no plan');
+        return;
+      }
+      setPill('run', 'applying…');
+      const r = await api('/api/agents/apply', { dir: dirOrDefault(), plan: state.lastPlan });
+      const summary = r.applied || {};
+      setOut('## Apply result\n\n' + JSON.stringify(summary, null, 2));
+      setPill('ok', 'applied');
+      setTimeout(() => setPill('ok', 'idle'), 800);
+    } catch (e) {
+      setPill('err', 'apply failed');
     }
   }
 
@@ -507,4 +526,5 @@
   window.toggleTheme = toggleTheme;
   window.saveInbox = saveInbox;
   window.saveAndPlan = saveAndPlan;
+  window.applyPlan = applyPlan;
 })();
