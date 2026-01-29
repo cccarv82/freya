@@ -775,6 +775,7 @@ function buildHtml(safeDefault) {
                   <div class="stack" style="margin-top:10px">
                     <button class="btn" onclick="reloadSlugRules()">Reload rules</button>
                     <button class="btn" onclick="saveSlugRules()">Save rules</button>
+                    <button class="btn" onclick="exportObsidian()">Export Obsidian notes</button>
                   </div>
                 </div>
               </div>
@@ -1552,6 +1553,13 @@ async function cmdWeb({ port, dir, open, dev }) {
           return safeJson(res, r.code === 0 ? 200 : 400, r.code === 0 ? { output } : { error: output || 'migrate failed', output });
         }
 
+
+
+        if (req.url === '/api/obsidian/export') {
+          const r = await run(npmCmd, ['run', 'export-obsidian'], workspaceDir);
+          const out = (r.stdout + r.stderr).trim();
+          return safeJson(res, r.code === 0 ? 200 : 400, r.code === 0 ? { ok: true, output: out } : { error: out || 'export failed', output: out });
+        }
 
         if (req.url === '/api/tasks/list') {
           const limit = Math.max(1, Math.min(50, Number(payload.limit || 10)));
