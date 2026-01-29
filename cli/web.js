@@ -9,6 +9,10 @@ function guessNpmCmd() {
   return process.platform === 'win32' ? 'npm.cmd' : 'npm';
 }
 
+function guessNpxCmd() {
+  return process.platform === 'win32' ? 'npx.cmd' : 'npx';
+}
+
 function guessOpenCmd() {
   // Minimal cross-platform opener without extra deps
   if (process.platform === 'win32') return { cmd: 'cmd', args: ['/c', 'start', ''] };
@@ -69,15 +73,29 @@ function readBody(req) {
 
 function run(cmd, args, cwd) {
   return new Promise((resolve) => {
-    const child = spawn(cmd, args, { cwd, shell: false, env: process.env });
+    let child;
+    try {
+      child = spawn(cmd, args, { cwd, shell: false, env: process.env });
+    } catch (e) {
+      return resolve({ code: 1, stdout: '', stderr: e.message || String(e) });
+    }
+
     let stdout = '';
     let stderr = '';
-    child.stdout.on('data', (d) => {
+
+    child.stdout && child.stdout.on('data', (d) => {
       stdout += d.toString();
     });
-    child.stderr.on('data', (d) => {
+    child.stderr && child.stderr.on('data', (d) => {
       stderr += d.toString();
     });
+
+    // Prevent unhandled error event (e.g., ENOENT on Windows when cmd not found)
+    child.on('error', (e) => {
+      stderr += `\n${e.message || String(e)}`;
+      resolve({ code: 1, stdout, stderr });
+    });
+
     child.on('close', (code) => resolve({ code: code ?? 0, stdout, stderr }));
   });
 }
@@ -743,14 +761,14 @@ async function cmdWeb({ port, dir, open, dev }) {
 
         if (req.url === '/api/init') {
           const pkg = '@cccarv82/freya';
-          const r = await run('npx', [pkg, 'init', workspaceDir], process.cwd());
+          const r = await run(guessNpxCmd(), [pkg, 'init', workspaceDir], process.cwd());
           return safeJson(res, r.code === 0 ? 200 : 400, { output: (r.stdout + r.stderr).trim() });
         }
 
         if (req.url === '/api/update') {
           const pkg = '@cccarv82/freya';
           fs.mkdirSync(workspaceDir, { recursive: true });
-          const r = await run('npx', [pkg, 'init', '--here'], workspaceDir);
+          const r = await run(guessNpxCmd(), [pkg, 'init', '--here'], workspaceDir);
           return safeJson(res, r.code === 0 ? 200 : 400, { output: (r.stdout + r.stderr).trim() });
         }
 
