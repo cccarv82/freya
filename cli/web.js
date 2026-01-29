@@ -185,8 +185,9 @@ async function pickDirectoryNative() {
   return null;
 }
 
-function html() {
+function html(defaultDir) {
   // Aesthetic: “clean workstation” — light-first UI inspired by modern productivity apps.
+  const safeDefault = String(defaultDir || './freya').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   return `<!doctype html>
 <html>
 <head>
@@ -633,13 +634,6 @@ function html() {
         </div>
 
         <div class="sideBlock">
-          <h3>Publish</h3>
-          <button class="btn sideBtn" onclick="publish('discord')">Publish → Discord</button>
-          <button class="btn sideBtn" onclick="publish('teams')">Publish → Teams</button>
-          <div class="help">Configure os webhooks no painel principal. O publish envia o último relatório gerado.</div>
-        </div>
-
-        <div class="sideBlock">
           <h3>Atalhos</h3>
           <div class="help"><span class="k">--dev</span> cria dados de exemplo para testar rápido.</div>
           <div class="help"><span class="k">--port</span> muda a porta (default 3872).</div>
@@ -695,13 +689,6 @@ function html() {
 
                 <div style="height:12px"></div>
 
-                <div class="stack">
-                  <button class="btn primary" onclick="doInit()">Init</button>
-                  <button class="btn" onclick="doUpdate()">Update</button>
-                  <button class="btn" onclick="doHealth()">Health</button>
-                  <button class="btn" onclick="doMigrate()">Migrate</button>
-                </div>
-
                 <div style="height:16px"></div>
 
                 <label>Discord webhook URL</label>
@@ -743,6 +730,7 @@ function html() {
   </div>
 
 <script>
+  window.__FREYA_DEFAULT_DIR = "${safeDefault}";
   const $ = (id) => document.getElementById(id);
   const state = { lastReportPath: null, lastText: '' };
 
@@ -798,10 +786,12 @@ function html() {
   }
 
   function loadLocal() {
-    $('dir').value = localStorage.getItem('freya.dir') || './freya';
+    $('dir').value = (window.__FREYA_DEFAULT_DIR && window.__FREYA_DEFAULT_DIR !== '__FREYA_DEFAULT_DIR__') ? window.__FREYA_DEFAULT_DIR : (localStorage.getItem('freya.dir') || './freya');
     $('discord').value = localStorage.getItem('freya.discord') || '';
     $('teams').value = localStorage.getItem('freya.teams') || '';
     $('sidePath').textContent = $('dir').value || './freya';
+    // Always persist the current run's default dir to avoid stale values
+    localStorage.setItem('freya.dir', $('dir').value || './freya');
   }
 
   async function api(p, body) {
@@ -1119,7 +1109,7 @@ async function cmdWeb({ port, dir, open, dev }) {
       if (!req.url) return safeJson(res, 404, { error: 'Not found' });
 
       if (req.method === 'GET' && req.url === '/') {
-        const body = html();
+        const body = html(dir || './freya');
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
         res.end(body);
         return;
@@ -1178,7 +1168,7 @@ async function cmdWeb({ port, dir, open, dev }) {
             blockers: 'blockers-',
             'sm-weekly': 'sm-weekly-',
             status: 'executive-',
-            daily: null
+            daily: 'daily-'
           };
           const prefix = prefixMap[script] || null;
           const reportPath = prefix ? newestFile(reportsDir, prefix) : null;
