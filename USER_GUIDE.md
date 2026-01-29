@@ -28,6 +28,15 @@ freya init meu-projeto  # cria ./meu-projeto
 freya init --here       # instala no diretório atual
 ```
 
+**Upgrade sem perder dados (recomendado):**
+Ao rodar `init` em uma pasta já existente, o CLI **preserva automaticamente** `data/**` e `logs/**` (se não estiverem vazios) e atualiza o restante.
+
+Se você quiser sobrescrever explicitamente:
+```bash
+freya init --here --force-data
+freya init --here --force-logs
+```
+
 ### 2) Interagir no chat da IDE
 Para interagir com a assistente, basta chamá-la no chat da sua IDE:
 
