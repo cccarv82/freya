@@ -288,13 +288,22 @@
     }
   }
 
-  async function refreshReports() {
+  async function refreshReports(opts = {}) {
     try {
       const r = await api('/api/reports/list', { dir: dirOrDefault() });
       state.reports = (r.reports || []).slice(0, 50);
       renderReportsList();
-      if (!state.selectedReport && state.reports && state.reports[0]) {
-        await selectReport(state.reports[0]);
+
+      const latest = state.reports && state.reports[0] ? state.reports[0] : null;
+      if (!latest) return;
+
+      if (opts.selectLatest) {
+        await selectReport(latest);
+        return;
+      }
+
+      if (!state.selectedReport) {
+        await selectReport(latest);
       }
     } catch (e) {
       // ignore
@@ -326,7 +335,7 @@
       const r = await api('/api/init', { dir: dirOrDefault() });
       setOut(r.output);
       setLast(null);
-      await refreshReports();
+      await refreshReports({ selectLatest: true });
       // Auto health after init
       try { await doHealth(); } catch {}
       setPill('ok', 'init ok');
@@ -345,7 +354,7 @@
       const r = await api('/api/update', { dir: dirOrDefault() });
       setOut(r.output);
       setLast(null);
-      await refreshReports();
+      await refreshReports({ selectLatest: true });
       // Auto health after update
       try { await doHealth(); } catch {}
       setPill('ok', 'update ok');
@@ -397,7 +406,7 @@
       setOut(r.output);
       setLast(r.reportPath || null);
       if (r.reportText) state.lastText = r.reportText;
-      await refreshReports();
+      await refreshReports({ selectLatest: true });
       setPill('ok', name + ' ok');
     } catch (e) {
       setPill('err', name + ' failed');
@@ -441,6 +450,7 @@
         : 'Publicar o relatório selecionado?';
 
       const ok = confirm(msg);
+      const ok = confirm('Publicar o relatório selecionado?');
       if (!ok) return;
 
       const webhookUrl = target === 'discord' ? $('discord').value.trim() : $('teams').value.trim();
@@ -542,7 +552,7 @@
       }
 
       setOut(out);
-      await refreshReports();
+      await refreshReports({ selectLatest: true });
       setPill('ok', 'done');
       setTimeout(() => setPill('ok', 'idle'), 800);
     } catch (e) {
