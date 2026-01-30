@@ -30,6 +30,12 @@ function escapeHtml(str) {
 
 const APP_VERSION = readAppVersion();
 
+const CHAT_ID_PATTERNS = [
+  /\bPTI\d{4,}-\d+\b/gi,
+  /\bINC\d+\b/gi,
+  /\bCHG\d+\b/gi
+];
+
 function guessNpmCmd() {
   // We'll execute via cmd.exe on Windows for reliability.
   return process.platform === 'win32' ? 'npm' : 'npm';
@@ -637,6 +643,61 @@ function isAllowedChatSearchPath(relPath) {
   return relPath.startsWith('data/') || relPath.startsWith('logs/') || relPath.startsWith('docs/');
 }
 
+function extractChatIds(text) {
+  const tokens = new Set();
+  const q = String(text || '');
+  for (const re of CHAT_ID_PATTERNS) {
+    const matches = q.match(re);
+    if (matches) {
+      for (const m of matches) tokens.add(m.toUpperCase());
+    }
+  }
+  return Array.from(tokens);
+}
+
+function extractProjectToken(text) {
+  const raw = String(text || '');
+  const m = raw.match(/project\s*[:=]\s*([A-Za-z0-9_\/-]+)/i);
+  if (m && m[1]) return m[1].trim();
+  const m2 = raw.match(/project\s*\(([^)]+)\)/i);
+  if (m2 && m2[1]) return m2[1].trim();
+  return '';
+}
+
+function projectFromPath(relPath) {
+  const p = String(relPath || '');
+  const m = p.match(/data\/Clients\/([^/]+)\/([^/]+)/i);
+  if (m && m[1] && m[2]) return `${m[1]}/${m[2]}`;
+  return '';
+}
+
+function matchKey(m) {
+  const ids = extractChatIds(`${m.file || ''} ${m.snippet || ''}`);
+  if (ids.length) return `id:${ids[0]}`;
+  const proj = projectFromPath(m.file) || extractProjectToken(`${m.file || ''} ${m.snippet || ''}`);
+  if (proj) return `proj:${proj.toLowerCase()}`;
+  return `file:${m.file || ''}`;
+}
+
+function mergeMatches(primary, secondary, limit = 8) {
+  const list = [];
+  const seen = new Set();
+  const push = (m) => {
+    if (!m || !m.file || !isAllowedChatSearchPath(m.file)) return;
+    const key = matchKey(m);
+    if (seen.has(key)) return;
+    seen.add(key);
+    list.push(m);
+  };
+
+  (primary || []).forEach(push);
+  (secondary || []).forEach(push);
+
+  const total = list.length;
+  const trimmed = list.slice(0, Math.max(1, Math.min(20, limit)));
+  return { matches: trimmed, total };
+}
+
 async function copilotSearch(workspaceDir, query, opts = {}) {
   const q = String(query || '').trim();
   if (!q) return { ok: false, error: 'Missing query' };
@@ -723,8 +784,8 @@ async function copilotSearch(workspaceDir, query, opts = {}) {
   return { ok: true, answer, matches, evidence };
 }
 
-function buildChatAnswer(query, matches, summary, evidence, answer) {
-  const count = matches.length;
+function buildChatAnswer(query, matches, summary, evidence, answer, totalCount) {
+  const count = typeof totalCount === 'number' ? totalCount : matches.length;
   let summaryText = String(summary || '').trim();
   let answerText = String(answer || '').trim();
   if (!answerText) {
@@ -740,7 +801,7 @@ function buildChatAnswer(query, matches, summary, evidence, answer) {
 
   const lines = [];
   lines.push(`Encontrei ${count} registro(s).`);
-  lines.push(`Resumo: ${answerText}`);
+  lines.push(`Resposta curta: ${answerText}`);
 
   const evidences = Array.isArray(evidence) && evidence.length
     ? evidence
@@ -749,15 +810,15 @@ function buildChatAnswer(query, matches, summary, evidence, answer) {
   if (!evidences.length) return lines.join('\n');
 
   lines.push('');
-  lines.push('Principais evidências:');
+  lines.push('Detalhes:');
   for (const m of evidences.slice(0, 5)) {
-    const parts = [];
-    if (m.date) parts.push(`**${m.date}**`);
-    if (m.file) parts.push('`' + m.file + '`');
-    const prefix = parts.length ? parts.join(' — ') + ':' : '';
     const detail = (m.detail || m.snippet || '').toString().trim();
     if (!detail) continue;
-    lines.push(`- ${prefix} ${detail}`);
+    const meta = [];
+    if (m.file) meta.push(m.file);
+    if (m.date) meta.push(m.date);
+    const suffix = meta.length ? ` (${meta.join(' · ')})` : '';
+    lines.push(`- ${detail}${suffix}`);
   }
 
   return lines.join('\n');
@@ -1781,24 +1842,27 @@ async function cmdWeb({ port, dir, open, dev }) {
           if (!query) return safeJson(res, 400, { error: 'Missing query' });
 
           const copilotResult = await copilotSearch(workspaceDir, query, { limit: 8 });
+          const indexMatches = searchIndex(workspaceDir, query, { limit: 12 });
+          const baseMatches = indexMatches.length
+            ? indexMatches
+            : searchWorkspace(workspaceDir, query, { limit: 12 });
+
           if (copilotResult.ok) {
-            const matches = copilotResult.matches || [];
+            const merged = mergeMatches(copilotResult.matches || [], baseMatches, 8);
             const answer = buildChatAnswer(
               query,
-              matches,
+              merged.matches,
               copilotResult.summary,
               copilotResult.evidence,
-              copilotResult.answer
+              copilotResult.answer,
+              merged.total
             );
-            return safeJson(res, 200, { ok: true, sessionId, answer, matches });
+            return safeJson(res, 200, { ok: true, sessionId, answer, matches: merged.matches });
           }
 
-          const indexMatches = searchIndex(workspaceDir, query, { limit: 8 });
-          const matches = indexMatches.length
-            ? indexMatches
-            : searchWorkspace(workspaceDir, query, { limit: 8 });
-          const answer = buildChatAnswer(query, matches, '');
-          return safeJson(res, 200, { ok: true, sessionId, answer, matches });
+          const merged = mergeMatches(baseMatches, [], 8);
+          const answer = buildChatAnswer(query, merged.matches, '', [], '', merged.total);
+          return safeJson(res, 200, { ok: true, sessionId, answer, matches: merged.matches });
         }
 
         // Chat persistence (per session)
