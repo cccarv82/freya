@@ -1,5 +1,7 @@
 const assert = require('assert');
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const { spawn } = require('child_process');
 
 function get(url) {
@@ -15,6 +17,8 @@ function get(url) {
 
 async function run() {
   const port = 3872 + Math.floor(Math.random() * 2000);
+  const pkg = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'));
+  const expectedVersion = pkg && pkg.version ? String(pkg.version) : 'unknown';
   const child = spawn(process.execPath, ['bin/freya.js', 'web', '--no-open', '--port', String(port)], {
     cwd: process.cwd(),
     stdio: ['ignore', 'pipe', 'pipe']
@@ -43,6 +47,7 @@ async function run() {
     assert.equal(html.status, 200);
     assert.ok(html.body.includes('/app.js'), 'HTML should reference /app.js');
     assert.ok(html.body.includes('/app.css'), 'HTML should reference /app.css');
+    assert.ok(html.body.includes(`v${expectedVersion}`), 'HTML should include app version badge');
 
     const js = await get(base + '/app.js');
     assert.equal(js.status, 200);

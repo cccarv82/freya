@@ -8,6 +8,28 @@ const { spawn } = require('child_process');
 const { searchWorkspace } = require('../scripts/lib/search-utils');
 const { searchIndex } = require('../scripts/lib/index-utils');
 
+function readAppVersion() {
+  const pkgPath = path.join(__dirname, '..', 'package.json');
+  try {
+    const json = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+    if (json && typeof json.version === 'string' && json.version.trim() !== '') return json.version.trim();
+  } catch {
+    // Fall back below.
+  }
+  return 'unknown';
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+const APP_VERSION = readAppVersion();
+
 function guessNpmCmd() {
   // We'll execute via cmd.exe on Windows for reliability.
   return process.platform === 'win32' ? 'npm' : 'npm';
@@ -795,10 +817,11 @@ async function pickDirectoryNative() {
 function html(defaultDir) {
   // Aesthetic: “clean workstation” — light-first UI inspired by modern productivity apps.
   const safeDefault = String(defaultDir || './freya').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-  return buildHtml(safeDefault);
+  return buildHtml(safeDefault, APP_VERSION);
 }
 
-function buildHtml(safeDefault) {
+function buildHtml(safeDefault, appVersion) {
+  const safeVersion = escapeHtml(appVersion || 'unknown');
   return `<!doctype html>
 <html>
 <head>
@@ -861,6 +884,7 @@ function buildHtml(safeDefault) {
           <div class="topbar">
             <div class="brand"><span class="spark"></span> Assistente de status local-first</div>
             <div class="actions">
+              <span class="chip" id="chipVersion">v${safeVersion}</span>
               <span class="chip" id="chipPort">127.0.0.1:3872</span>
               <button class="toggle" id="themeToggle" onclick="toggleTheme()">Escuro</button>
             </div>
