@@ -20,7 +20,7 @@
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('freya.theme', theme);
     const t = $('themeToggle');
-    if (t) t.textContent = theme === 'dark' ? 'Light' : 'Dark';
+    if (t) t.textContent = theme === 'dark' ? 'Claro' : 'Escuro';
   }
 
   function toggleTheme() {
@@ -162,7 +162,7 @@
     state.lastText = '';
     const el = $('reportPreview');
     if (el) el.innerHTML = '';
-    setPill('ok', 'idle');
+    setPill('ok', 'pronto');
   }
 
   async function copyOut() {
@@ -899,9 +899,11 @@
     }
 
     refreshReports();
+    refreshToday();
+    reloadSlugRules();
   })();
 
-  setPill('ok', 'idle');
+  setPill('ok', 'pronto');
 
   // Expose handlers for inline onclick
   window.doInit = doInit;
