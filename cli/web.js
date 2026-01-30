@@ -6,6 +6,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
 const { searchWorkspace } = require('../scripts/lib/search-utils');
+const { searchIndex } = require('../scripts/lib/index-utils');
 
 function guessNpmCmd() {
   // We'll execute via cmd.exe on Windows for reliability.
@@ -841,6 +842,9 @@ function buildHtml(safeDefault) {
                     <div class="panelBody">
                       <div class="help">Logs ficam em <code>logs/</code> e debug traces em <code>.debuglogs/</code> dentro da workspace.</div>
                       <div class="help">Use <b>Open file</b> / <b>Copy path</b> no Preview para abrir/compartilhar o relatório selecionado.</div>
+                      <div class="stack" style="margin-top:10px">
+                        <button class="btn" onclick="rebuildIndex()">Rebuild search index</button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1608,12 +1612,21 @@ async function cmdWeb({ port, dir, open, dev }) {
           return safeJson(res, r.code === 0 ? 200 : 400, r.code === 0 ? { ok: true, output: out } : { error: out || 'export failed', output: out });
         }
 
+        if (req.url === '/api/index/rebuild') {
+          const r = await run(npmCmd, ['run', 'build-index'], workspaceDir);
+          const out = (r.stdout + r.stderr).trim();
+          return safeJson(res, r.code === 0 ? 200 : 400, r.code === 0 ? { ok: true, output: out } : { error: out || 'index rebuild failed', output: out });
+        }
+
         if (req.url === '/api/chat/ask') {
           const sessionId = String(payload.sessionId || '').trim();
           const query = String(payload.query || '').trim();
           if (!query) return safeJson(res, 400, { error: 'Missing query' });
 
-          const matches = searchWorkspace(workspaceDir, query, { limit: 8 });
+          const indexMatches = searchIndex(workspaceDir, query, { limit: 8 });
+          const matches = indexMatches.length
+            ? indexMatches
+            : searchWorkspace(workspaceDir, query, { limit: 8 });
           if (!matches.length) {
             return safeJson(res, 200, { ok: true, sessionId, answer: 'Não encontrei registro', matches: [] });
           }
