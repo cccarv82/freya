@@ -608,6 +608,111 @@ function run(cmd, args, cwd) {
   });
 }
 
+function isAllowedChatSearchPath(relPath) {
+  if (!relPath) return false;
+  if (relPath.startsWith('..')) return false;
+  return relPath.startsWith('data/') || relPath.startsWith('logs/') || relPath.startsWith('docs/');
+}
+
+async function copilotSearch(workspaceDir, query, opts = {}) {
+  const q = String(query || '').trim();
+  if (!q) return { ok: false, error: 'Missing query' };
+
+  const limit = Math.max(1, Math.min(20, Number(opts.limit || 8)));
+  const cmd = process.env.COPILOT_CMD || 'copilot';
+
+  const prompt = [
+    'Você é um buscador local de arquivos.',
+    'Objetivo: encontrar registros relevantes para a consulta do usuário.',
+    'Escopo: procure SOMENTE nos diretórios data/, logs/ e docs/ do workspace.',
+    'Use ferramentas para ler/consultar arquivos, mas não modifique nada.',
+    `Consulta do usuário: "${q}"`,
+    '',
+    'Responda APENAS com JSON válido (sem code fences) no formato:',
+    '{"summary":"<1-2 frases humanas>","matches":[{"file":"<caminho relativo>","date":"YYYY-MM-DD ou vazio","snippet":"<trecho curto>"}]}',
+    `Limite de matches: ${limit}.`,
+    'A lista deve estar ordenada por relevância.'
+  ].join('\n');
+
+  const args = [
+    '-s',
+    '--no-color',
+    '--stream',
+    'off',
+    '--non-interactive',
+    '-p',
+    prompt,
+    '--allow-all-tools',
+    '--add-dir',
+    workspaceDir
+  ];
+
+  const r = await run(cmd, args, workspaceDir);
+  const out = (r.stdout + r.stderr).trim();
+  if (r.code !== 0) return { ok: false, error: out || 'Copilot returned non-zero exit code.' };
+
+  const jsonText = extractFirstJsonObject(out) || out;
+  let parsed;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch {
+    try {
+      parsed = JSON.parse(escapeJsonControlChars(jsonText));
+    } catch (e) {
+      return { ok: false, error: e.message || 'Copilot output not valid JSON.' };
+    }
+  }
+
+  const matchesRaw = Array.isArray(parsed.matches) ? parsed.matches : [];
+  const matches = matchesRaw
+    .map((m) => {
+      const fileRaw = String(m && m.file ? m.file : '').trim();
+      const dateRaw = String(m && m.date ? m.date : '').trim();
+      const snippetRaw = String(m && m.snippet ? m.snippet : '').trim();
+      let rel = fileRaw;
+      if (fileRaw.startsWith(workspaceDir)) {
+        rel = path.relative(workspaceDir, fileRaw).replace(/\\/g, '/');
+      }
+      return { file: rel.replace(/\\/g, '/'), date: dateRaw, snippet: snippetRaw };
+    })
+    .filter((m) => m.file && isAllowedChatSearchPath(m.file))
+    .slice(0, limit);
+
+  const summary = String(parsed.summary || '').trim();
+  return { ok: true, summary, matches };
+}
+
+function buildChatAnswer(query, matches, summary) {
+  const count = matches.length;
+  let summaryText = String(summary || '').trim();
+  if (!summaryText) {
+    if (count === 0) {
+      summaryText = `Não encontrei registros relacionados a "${query}".`;
+    } else {
+      summaryText = `Resultados relacionados a "${query}".`;
+    }
+  }
+
+  const lines = [];
+  if (count === 0) {
+    lines.push(`Encontrei 0 registro(s).`);
+  } else {
+    lines.push(`Encontrei ${count} registro(s):`);
+  }
+  lines.push(`Resumo: ${summaryText}`);
+
+  for (const m of matches) {
+    const parts = [];
+    if (m.date) parts.push(`**${m.date}**`);
+    if (m.file) parts.push('`' + m.file + '`');
+    const prefix = parts.length ? parts.join(' — ') + ':' : '';
+    const snippet = m.snippet ? String(m.snippet).trim() : '';
+    lines.push(`- ${prefix} ${snippet}`);
+  }
+
+  return lines.join('\n');
+}
+
 function openBrowser(url) {
   const { cmd, args } = guessOpenCmd();
   try {
@@ -1623,26 +1728,18 @@ async function cmdWeb({ port, dir, open, dev }) {
           const query = String(payload.query || '').trim();
           if (!query) return safeJson(res, 400, { error: 'Missing query' });
 
+          const copilotResult = await copilotSearch(workspaceDir, query, { limit: 8 });
+          if (copilotResult.ok) {
+            const matches = copilotResult.matches || [];
+            const answer = buildChatAnswer(query, matches, copilotResult.summary);
+            return safeJson(res, 200, { ok: true, sessionId, answer, matches });
+          }
+
           const indexMatches = searchIndex(workspaceDir, query, { limit: 8 });
           const matches = indexMatches.length
             ? indexMatches
             : searchWorkspace(workspaceDir, query, { limit: 8 });
-          if (!matches.length) {
-            return safeJson(res, 200, { ok: true, sessionId, answer: 'Não encontrei registro', matches: [] });
-          }
-
-          const lines = [];
-          lines.push(`Encontrei ${matches.length} registro(s):`);
-          for (const m of matches) {
-            const parts = [];
-            if (m.date) parts.push(`**${m.date}**`);
-            if (m.file) parts.push('`' + m.file + '`');
-            const prefix = parts.length ? parts.join(' — ') + ':' : '';
-            const snippet = m.snippet ? String(m.snippet).trim() : '';
-            lines.push(`- ${prefix} ${snippet}`);
-          }
-
-          const answer = lines.join('\n');
+          const answer = buildChatAnswer(query, matches, '');
           return safeJson(res, 200, { ok: true, sessionId, answer, matches });
         }
 
