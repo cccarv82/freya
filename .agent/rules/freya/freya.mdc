@@ -11,7 +11,13 @@ To invoke the assistant, simply type: `@freya`
 <agent-entry>
 1. **Trigger:** User types `@freya` or mentions `@freya`.
 2. **Action:** Load `@.agent/rules/freya/agents/master.mdc`.
-3. **Behavior:** The Master Agent (FREYA) will interpret the request and route to the appropriate sub-module or answer directly.
+3. **Behavior (AUTO-INGEST OBRIGATÓRIO):**
+   - Sempre que o usuário compartilhar contexto relevante (mensagens de chat, decisões, status, prints, trechos de e-mail, etc.), o Master Agent **NÃO DEVE perguntar se deve registrar**.
+   - O comportamento padrão é: interpretar o pedido e **disparar automaticamente o sub-módulo Ingestor** para registrar o contexto em:
+     - `logs/daily/{YYYY-MM-DD}.md` (raw input + notas estruturadas),
+     - `data/Clients/.../status.json` (quando houver cliente/projeto),
+     - `data/tasks/task-log.json` (quando houver tarefas, marcos, datas ou follow-ups).
+   - Primeiro registra, depois confirma ao usuário o que foi gravado (não pedir permissão prévia para criar logs ou tasks).
 </agent-entry>
 
 <menu-display>
