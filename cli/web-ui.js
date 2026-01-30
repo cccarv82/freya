@@ -10,6 +10,7 @@
     reports: [],
     reportTexts: {},
     reportModes: {},
+    reportExpanded: {},
     selectedReport: null,
     lastPlan: '',
     lastApplied: null,
@@ -62,6 +63,20 @@
       if (inList) { html += '</ul>'; inList = false; }
     };
 
+    const inlineFormat = (text) => {
+      const esc = escapeHtml(text || '');
+      const codes = [];
+      let out = esc.replace(inlineCodeRe, (_, c) => {
+        const idx = codes.length;
+        codes.push(c);
+        return `@@CODE${idx}@@`;
+      });
+      out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      out = out.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+      out = out.replace(/@@CODE(\d+)@@/g, (_, i) => `<code class="md-inline">${codes[Number(i)]}</code>`);
+      return out;
+    };
+
     for (const line of lines) {
       if (line.trim().startsWith(FENCE)) {
         if (!inCode) {
@@ -84,14 +99,14 @@
       if (h) {
         closeList();
         const lvl = h[1].length;
-        html += '<h' + lvl + ' class="md-h' + lvl + '">' + escapeHtml(h[2]) + '</h' + lvl + '>';
+        html += '<h' + lvl + ' class="md-h' + lvl + '">' + inlineFormat(h[2]) + '</h' + lvl + '>';
         continue;
       }
 
       const li = line.match(/^[ \t]*[-*][ \t]+(.*)$/);
       if (li) {
         if (!inList) { html += '<ul class="md-ul">'; inList = true; }
-        const content = escapeHtml(li[1]).replace(inlineCodeRe, '<code class="md-inline">$1</code>');
+        const content = inlineFormat(li[1]);
         html += '<li>' + content + '</li>';
         continue;
       }
@@ -103,7 +118,7 @@
       }
 
       closeList();
-      const p = escapeHtml(line).replace(inlineCodeRe, '<code class="md-inline">$1</code>');
+      const p = inlineFormat(line);
       html += '<p class="md-p">' + p + '</p>';
     }
 
@@ -493,6 +508,23 @@
     }
   }
 
+  function autoGrowTextarea(el) {
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  }
+
+  function downloadReportPdf(item) {
+    const text = state.reportTexts[item.relPath] || '';
+    const html = `<!doctype html><html><head><meta charset="utf-8" /><title>${escapeHtml(item.name)}</title><style>body{font-family:Arial, sans-serif; padding:32px; color:#111;} h1,h2,h3{margin:16px 0 8px;} pre{background:#f5f5f5; padding:12px; border-radius:8px;}</style></head><body>${renderMarkdown(text)}</body></html>`;
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    win.print();
+  }
+
   function renderReportsPage() {
     const grid = $('reportsGrid');
     if (!grid) return;
@@ -506,14 +538,18 @@
     for (const item of list) {
       const card = document.createElement('div');
       const mode = state.reportModes[item.relPath] || 'preview';
-      card.className = 'reportCard' + (mode === 'raw' ? ' raw' : '');
+      const expanded = state.reportExpanded && state.reportExpanded[item.relPath];
+      card.className = 'reportCard' + (mode === 'raw' ? ' raw' : '') + (expanded ? ' expanded' : '');
 
       const meta = fmtWhen(item.mtimeMs);
       card.innerHTML =
-        '<div class="reportHead">'
+        '<div class="reportHead" data-action="expand">'
         + '<div>'
         + '<div class="reportName">' + escapeHtml(item.name) + '</div>'
-        + '<div class="reportMeta">' + escapeHtml(item.relPath) + ' • ' + escapeHtml(meta) + '</div>'
+        + '<div class="reportMeta">'
+        + '<span class="reportMetaText">' + escapeHtml(item.relPath) + ' • ' + escapeHtml(meta) + '</span>'
+        + '<button class="iconBtn" data-action="pdf" title="Baixar PDF">⬇</button>'
+        + '</div>'
         + '</div>'
         + '<div class="reportHeadActions">'
         + '<button class="btn small" data-action="toggle">' + (mode === 'raw' ? 'Preview' : 'Markdown') + '</button>'
@@ -521,15 +557,33 @@
         + '</div>'
         + '</div>'
         + '<div class="reportBody">'
-        + '<div class="reportPreview"></div>'
-        + '<textarea class="reportRaw" rows="12"></textarea>'
+        + '<div class="reportPreview" contenteditable="true"></div>'
+        + '<textarea class="reportRaw" rows="6"></textarea>'
         + '</div>';
 
       const text = state.reportTexts[item.relPath] || '';
       const preview = card.querySelector('.reportPreview');
       if (preview) preview.innerHTML = renderMarkdown(text || '');
       const raw = card.querySelector('.reportRaw');
-      if (raw) raw.value = text;
+      if (raw) {
+        raw.value = text;
+        autoGrowTextarea(raw);
+        raw.addEventListener('input', () => {
+          state.reportTexts[item.relPath] = raw.value;
+          autoGrowTextarea(raw);
+        });
+      }
+
+      if (preview) {
+        preview.addEventListener('input', () => {
+          const val = preview.innerText || '';
+          state.reportTexts[item.relPath] = val;
+          if (raw) {
+            raw.value = val;
+            autoGrowTextarea(raw);
+          }
+        });
+      }
 
       const toggleBtn = card.querySelector('[data-action="toggle"]');
       if (toggleBtn) {
@@ -543,7 +597,7 @@
       if (saveBtn) {
         saveBtn.onclick = async () => {
           try {
-            const content = (raw && typeof raw.value === 'string') ? raw.value : '';
+            const content = (raw && typeof raw.value === 'string') ? raw.value : (state.reportTexts[item.relPath] || '');
             setPill('run', 'salvando…');
             await api('/api/reports/write', { dir: dirOrDefault(), relPath: item.relPath, text: content });
             state.reportTexts[item.relPath] = content;
@@ -553,6 +607,23 @@
           } catch (e) {
             setPill('err', 'falhou');
           }
+        };
+      }
+
+      const pdfBtn = card.querySelector('[data-action="pdf"]');
+      if (pdfBtn) {
+        pdfBtn.onclick = (ev) => {
+          ev.stopPropagation();
+          downloadReportPdf(item);
+        };
+      }
+
+      const head = card.querySelector('[data-action="expand"]');
+      if (head) {
+        head.onclick = () => {
+          state.reportExpanded = state.reportExpanded || {};
+          state.reportExpanded[item.relPath] = !state.reportExpanded[item.relPath];
+          renderReportsPage();
         };
       }
 
