@@ -688,13 +688,14 @@ function buildHtml(safeDefault) {
 
           <div class="sideGroup">
             <div class="sideTitle">Workspaces</div>
+            <div class="help" style="margin-top:-4px">Selecione sua pasta <code>freya/</code> e sincronize quando precisar.</div>
             <div class="row" style="grid-template-columns: 1fr auto">
               <input id="dir" placeholder="./freya" />
               <button class="btn small" onclick="pickDir()">Browse</button>
             </div>
             <div class="stack" style="margin-top:10px">
-              <button class="btn sideBtn" onclick="doUpdate()">Sync workspace</button>
-              <button class="btn sideBtn" onclick="doMigrate()">Migrate data</button>
+              <button class="btn sideBtn" onclick="doUpdate()">Sincronizar workspace</button>
+              <button class="btn sideBtn" onclick="doMigrate()">Migrar dados</button>
             </div>
             <div style="height:10px"></div>
             <div class="help"><b>Sync workspace</b>: atualiza scripts/templates/agents na pasta <code>freya</code> sem sobrescrever <code>data/</code> e <code>logs/</code>.</div>
@@ -702,18 +703,18 @@ function buildHtml(safeDefault) {
           </div>
 
           <div class="sideGroup">
-            <div class="sideTitle">Quick reports</div>
+            <div class="sideTitle">Relatórios rápidos</div>
             <div class="cardsMini">
-              <button class="miniCard" type="button" onclick="runReport('status')"><span class="miniIcon">E</span><span>Executive</span></button>
-              <button class="miniCard" type="button" onclick="runReport('sm-weekly')"><span class="miniIcon">S</span><span>SM weekly</span></button>
-              <button class="miniCard" type="button" onclick="runReport('blockers')"><span class="miniIcon warn">B</span><span>Blockers</span></button>
+              <button class="miniCard" type="button" onclick="runReport('status')"><span class="miniIcon">E</span><span>Executivo</span></button>
+              <button class="miniCard" type="button" onclick="runReport('sm-weekly')"><span class="miniIcon">S</span><span>SM semanal</span></button>
+              <button class="miniCard" type="button" onclick="runReport('blockers')"><span class="miniIcon warn">B</span><span>Bloqueios</span></button>
               <button class="miniCard" type="button" onclick="runReport('daily')"><span class="miniIcon">D</span><span>Daily</span></button>
             </div>
             <div class="help" style="margin-top:8px">Clique para gerar e atualizar o preview/publicação.</div>
           </div>
 
           <div class="sideGroup">
-            <div class="sideTitle">Tips</div>
+            <div class="sideTitle">Atalhos</div>
             <div class="help"><span class="k">--dev</span> cria dados de exemplo para testar rápido.</div>
             <div style="height:8px"></div>
             <div class="help"><span class="k">--port</span> muda a porta (default 3872).</div>
@@ -723,18 +724,18 @@ function buildHtml(safeDefault) {
         <!-- MIDDLE: Reports / Today -->
         <main class="center">
           <div class="topbar">
-            <div class="brand"><span class="spark"></span> Local-first status assistant</div>
+            <div class="brand"><span class="spark"></span> Assistente de status local-first</div>
             <div class="actions">
               <span class="chip" id="chipPort">127.0.0.1:3872</span>
-              <button class="toggle" id="themeToggle" onclick="toggleTheme()">Theme</button>
+              <button class="toggle" id="themeToggle" onclick="toggleTheme()">Escuro</button>
             </div>
           </div>
 
           <div class="centerBody">
             <div class="centerHead">
               <div>
-                <h1 style="margin:0">Your day at a glance</h1>
-                <div class="subtitle">Workspaces, Today (tasks/blockers), reports & preview. Use the right panel as a chat-style capture.</div>
+                <h1 style="margin:0">Seu dia em um painel</h1>
+                <div class="subtitle">Workspaces, Hoje (tarefas/bloqueios), relatórios e preview. Use o painel da direita como um “chat” para capturar updates.</div>
               </div>
               <div class="statusLine">
                 <span class="small" id="last"></span>
@@ -744,31 +745,31 @@ function buildHtml(safeDefault) {
             <div class="midGrid">
               <section class="panel">
                 <div class="panelHead">
-                  <b>Today</b>
+                  <b>Hoje</b>
                   <div class="stack">
-                    <button class="btn small" onclick="refreshToday()">Refresh</button>
+                    <button class="btn small" onclick="refreshToday()">Atualizar</button>
                   </div>
                 </div>
                 <div class="panelBody">
-                  <div class="small" style="margin-bottom:8px; opacity:.8">Do Now</div>
+                  <div class="small" style="margin-bottom:8px; opacity:.8">Fazer agora</div>
                   <div id="tasksList" style="display:grid; gap:8px"></div>
                   <div style="height:12px"></div>
-                  <div class="small" style="margin-bottom:8px; opacity:.8">Open blockers</div>
+                  <div class="small" style="margin-bottom:8px; opacity:.8">Bloqueios abertos</div>
                   <div id="blockersList" style="display:grid; gap:8px"></div>
                 </div>
               </section>
 
               <section class="panel">
                 <div class="panelHead">
-                  <b>Reports</b>
+                  <b>Relatórios</b>
                   <div class="stack">
-                    <button class="btn small" onclick="refreshReports()">Refresh</button>
+                    <button class="btn small" onclick="refreshReports()">Atualizar</button>
                   </div>
                 </div>
                 <div class="panelBody">
                   <input id="reportsFilter" placeholder="filter (ex: daily, executive, 2026-01-29)" style="width:100%; margin-bottom:10px" oninput="renderReportsList()" />
                   <div id="reportsList" style="display:grid; gap:8px"></div>
-                  <div class="help">Últimos relatórios em <code>docs/reports</code>. Clique para abrir preview.</div>
+                  <div class="help">Últimos relatórios em <code>docs/reports</code>. Clique para abrir o preview.</div>
                 </div>
               </section>
 
@@ -792,11 +793,11 @@ function buildHtml(safeDefault) {
             </div>
 
             <details class="devDrawer" id="devDrawer">
-              <summary>Developer</summary>
+              <summary>Developer (modo avançado)</summary>
               <div class="devBody">
                 <div class="devGrid">
                   <div class="panel">
-                    <div class="panelHead"><b>Publish settings</b></div>
+                    <div class="panelHead"><b>Configurações de publicação</b></div>
                     <div class="panelBody">
                       <label>Discord webhook URL</label>
                       <input id="discord" placeholder="https://discord.com/api/webhooks/..." />
@@ -821,7 +822,7 @@ function buildHtml(safeDefault) {
                   </div>
 
                   <div class="panel">
-                    <div class="panelHead"><b>Slug rules & export</b></div>
+                    <div class="panelHead"><b>Slugs & Export</b></div>
                     <div class="panelBody">
                       <label>Project slug rules</label>
                       <textarea id="slugRules" rows="8" placeholder="{ \"rules\": [ { \"contains\": \"fideliza\", \"slug\": \"vivo/fidelizacao\" } ] }" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line); background: rgba(255,255,255,.72); color: var(--text); outline:none; resize: vertical; font-family: var(--mono);"></textarea>
@@ -852,7 +853,7 @@ function buildHtml(safeDefault) {
           <div class="chatHead">
             <div>
               <div class="chatTitle">Chat</div>
-              <div class="chatSub">Capture updates, then let Agents plan/apply.</div>
+              <div class="chatSub">Cole seus updates e deixe os Agents planejar/aplicar.</div>
             </div>
           </div>
 
