@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { spawn } = require('child_process');
+const { searchWorkspace } = require('../scripts/lib/search-utils');
 
 function guessNpmCmd() {
   // We'll execute via cmd.exe on Windows for reliability.
@@ -871,6 +872,7 @@ function buildHtml(safeDefault) {
               <button class="btn primary" type="button" onclick="saveAndPlan()">Salvar + Processar (Agents)</button>
               <button class="btn" type="button" onclick="runSuggestedReports()">Rodar relatórios sugeridos</button>
               <button class="btn" type="button" onclick="exportChatObsidian()">Exportar conversa (Obsidian)</button>
+              <button class="btn" type="button" onclick="askFreya()">Perguntar à Freya</button>
             </div>
 
             <div class="composerToggles">
@@ -1604,6 +1606,31 @@ async function cmdWeb({ port, dir, open, dev }) {
           const r = await run(npmCmd, ['run', 'export-obsidian'], workspaceDir);
           const out = (r.stdout + r.stderr).trim();
           return safeJson(res, r.code === 0 ? 200 : 400, r.code === 0 ? { ok: true, output: out } : { error: out || 'export failed', output: out });
+        }
+
+        if (req.url === '/api/chat/ask') {
+          const sessionId = String(payload.sessionId || '').trim();
+          const query = String(payload.query || '').trim();
+          if (!query) return safeJson(res, 400, { error: 'Missing query' });
+
+          const matches = searchWorkspace(workspaceDir, query, { limit: 8 });
+          if (!matches.length) {
+            return safeJson(res, 200, { ok: true, sessionId, answer: 'Não encontrei registro', matches: [] });
+          }
+
+          const lines = [];
+          lines.push(`Encontrei ${matches.length} registro(s):`);
+          for (const m of matches) {
+            const parts = [];
+            if (m.date) parts.push(`**${m.date}**`);
+            if (m.file) parts.push('`' + m.file + '`');
+            const prefix = parts.length ? parts.join(' — ') + ':' : '';
+            const snippet = m.snippet ? String(m.snippet).trim() : '';
+            lines.push(`- ${prefix} ${snippet}`);
+          }
+
+          const answer = lines.join('\n');
+          return safeJson(res, 200, { ok: true, sessionId, answer, matches });
         }
 
         // Chat persistence (per session)

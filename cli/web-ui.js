@@ -240,6 +240,28 @@
     }
   }
 
+  async function askFreya() {
+    const input = $('inboxText');
+    const query = input ? input.value.trim() : '';
+    if (!query) {
+      setPill('err', 'digite uma pergunta');
+      return;
+    }
+
+    chatAppend('user', query);
+    setPill('run', 'pesquisando…');
+    try {
+      const sessionId = ensureChatSession();
+      const r = await api('/api/chat/ask', { dir: dirOrDefault(), sessionId, query });
+      const answer = r && r.answer ? r.answer : 'Não encontrei registro';
+      chatAppend('assistant', answer, { markdown: true });
+      setPill('ok', 'pronto');
+    } catch (e) {
+      setPill('err', 'falhou');
+      chatAppend('assistant', String(e && e.message ? e.message : e));
+    }
+  }
+
   function setOut(text) {
     state.lastText = text || '';
     const el = $('reportPreview');
@@ -1035,4 +1057,5 @@
   window.applyPlan = applyPlan;
   window.runSuggestedReports = runSuggestedReports;
   window.exportChatObsidian = exportChatObsidian;
+  window.askFreya = askFreya;
 })();
