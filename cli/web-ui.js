@@ -114,6 +114,37 @@
     return html;
   }
 
+  function chatAppend(role, text, opts = {}) {
+    const thread = $('chatThread');
+    if (!thread) return;
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble ' + (role === 'user' ? 'user' : 'assistant');
+
+    const meta = document.createElement('div');
+    meta.className = 'bubbleMeta';
+    meta.textContent = role === 'user' ? 'You' : 'FREYA';
+
+    const body = document.createElement('div');
+    body.className = 'bubbleBody';
+
+    const raw = String(text || '');
+    if (opts.markdown) {
+      body.innerHTML = renderMarkdown(raw);
+    } else {
+      body.innerHTML = escapeHtml(raw).replace(/\n/g, '<br>');
+    }
+
+    bubble.appendChild(meta);
+    bubble.appendChild(body);
+    thread.appendChild(bubble);
+
+    // keep newest in view
+    try {
+      thread.scrollTop = thread.scrollHeight;
+    } catch {}
+  }
+
   function setOut(text) {
     state.lastText = text || '';
     const el = $('reportPreview');
@@ -717,6 +748,8 @@
         return;
       }
 
+      chatAppend('user', text);
+
       setPill('run', 'saving…');
       await api('/api/inbox/add', { dir: dirOrDefault(), text });
 
@@ -727,7 +760,9 @@
 
       // Show plan output in Preview panel
       const header = r.ok === false ? '## Agent Plan (planner unavailable)\n\n' : '## Agent Plan (draft)\n\n';
-      setOut(header + (r.plan || ''));
+      const planOut = header + (r.plan || '');
+      setOut(planOut);
+      chatAppend('assistant', planOut, { markdown: true });
       ta.value = '';
 
       if (r.ok === false) {
@@ -807,6 +842,7 @@
       }
 
       setOut(msg);
+      chatAppend('assistant', msg, { markdown: true });
       setPill('ok', 'applied');
       setTimeout(() => setPill('ok', 'idle'), 800);
     } catch (e) {
@@ -820,6 +856,18 @@
   applyTheme(localStorage.getItem('freya.theme') || 'light');
   $('chipPort').textContent = location.host;
   loadLocal();
+
+  // Developer drawer (persist open/close)
+  try {
+    const d = $('devDrawer');
+    if (d) {
+      const open = localStorage.getItem('freya.devDrawer') === '1';
+      if (open) d.open = true;
+      d.addEventListener('toggle', () => {
+        try { localStorage.setItem('freya.devDrawer', d.open ? '1' : '0'); } catch {}
+      });
+    }
+  } catch {}
 
   // Load persisted settings from the workspace + bootstrap (auto-init + auto-health)
   (async () => {
