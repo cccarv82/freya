@@ -750,7 +750,7 @@ function buildHtml(safeDefault) {
                     <button class="btn small" onclick="refreshToday()">Atualizar</button>
                   </div>
                 </div>
-                <div class="panelBody">
+                <div class="panelBody panelScroll">
                   <div class="small" style="margin-bottom:8px; opacity:.8">Fazer agora</div>
                   <div id="tasksList" style="display:grid; gap:8px"></div>
                   <div style="height:12px"></div>
@@ -766,7 +766,7 @@ function buildHtml(safeDefault) {
                     <button class="btn small" onclick="refreshReports()">Atualizar</button>
                   </div>
                 </div>
-                <div class="panelBody">
+                <div class="panelBody panelScroll">
                   <input id="reportsFilter" placeholder="filter (ex: daily, executive, 2026-01-29)" style="width:100%; margin-bottom:10px" oninput="renderReportsList()" />
                   <div id="reportsList" style="display:grid; gap:8px"></div>
                   <div class="help">Últimos relatórios em <code>docs/reports</code>. Clique para abrir o preview.</div>
