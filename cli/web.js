@@ -870,6 +870,7 @@ function buildHtml(safeDefault) {
             <div class="composerActions">
               <button class="btn primary" type="button" onclick="saveAndPlan()">Salvar + Processar (Agents)</button>
               <button class="btn" type="button" onclick="runSuggestedReports()">Rodar relatórios sugeridos</button>
+              <button class="btn" type="button" onclick="exportChatObsidian()">Exportar conversa (Obsidian)</button>
             </div>
 
             <div class="composerToggles">
@@ -1603,6 +1604,101 @@ async function cmdWeb({ port, dir, open, dev }) {
           const r = await run(npmCmd, ['run', 'export-obsidian'], workspaceDir);
           const out = (r.stdout + r.stderr).trim();
           return safeJson(res, r.code === 0 ? 200 : 400, r.code === 0 ? { ok: true, output: out } : { error: out || 'export failed', output: out });
+        }
+
+        // Chat persistence (per session)
+        if (req.url === '/api/chat/append') {
+          const sessionId = String(payload.sessionId || '').trim();
+          const role = String(payload.role || '').trim();
+          const text = String(payload.text || '').trimEnd();
+          const markdown = !!payload.markdown;
+          const ts = typeof payload.ts === 'number' ? payload.ts : Date.now();
+          if (!sessionId) return safeJson(res, 400, { error: 'Missing sessionId' });
+          if (!role) return safeJson(res, 400, { error: 'Missing role' });
+          if (!text) return safeJson(res, 400, { error: 'Missing text' });
+
+          const d = isoDate();
+          const base = path.join(workspaceDir, 'data', 'chat', d);
+          ensureDir(base);
+          const file = path.join(base, `${sessionId}.jsonl`);
+          const item = { ts, role, markdown, text };
+          fs.appendFileSync(file, JSON.stringify(item) + '\n', 'utf8');
+          return safeJson(res, 200, { ok: true });
+        }
+
+        if (req.url === '/api/chat/load') {
+          const sessionId = String(payload.sessionId || '').trim();
+          const d = String(payload.date || '').trim() || isoDate();
+          if (!sessionId) return safeJson(res, 400, { error: 'Missing sessionId' });
+          const file = path.join(workspaceDir, 'data', 'chat', d, `${sessionId}.jsonl`);
+          if (!exists(file)) return safeJson(res, 200, { ok: true, items: [] });
+
+          const rawText = fs.readFileSync(file, 'utf8');
+          const lines = rawText.split(/\r?\n/).filter(Boolean);
+          const items = [];
+          for (const line of lines) {
+            try {
+              const obj = JSON.parse(line);
+              if (!obj || typeof obj !== 'object') continue;
+              items.push(obj);
+            } catch {
+              // ignore corrupt line
+            }
+          }
+          return safeJson(res, 200, { ok: true, items });
+        }
+
+        if (req.url === '/api/chat/export-obsidian') {
+          const sessionId = String(payload.sessionId || '').trim();
+          const d = String(payload.date || '').trim() || isoDate();
+          if (!sessionId) return safeJson(res, 400, { error: 'Missing sessionId' });
+          const file = path.join(workspaceDir, 'data', 'chat', d, `${sessionId}.jsonl`);
+          if (!exists(file)) return safeJson(res, 404, { error: 'Chat not found' });
+
+          const rawText = fs.readFileSync(file, 'utf8');
+          const lines = rawText.split(/\r?\n/).filter(Boolean);
+          const items = [];
+          for (const line of lines) {
+            try {
+              const obj = JSON.parse(line);
+              if (!obj || typeof obj !== 'object') continue;
+              items.push(obj);
+            } catch {}
+          }
+
+          const outDir = path.join(workspaceDir, 'docs', 'chat');
+          ensureDir(outDir);
+          const outName = `conversa-${d}-${sessionId}.md`;
+          const outPath = path.join(outDir, outName);
+
+          const md = [];
+          md.push('---');
+          md.push(`type: chat`);
+          md.push(`date: ${d}`);
+          md.push(`session: ${sessionId}`);
+          md.push('---');
+          md.push('');
+          md.push(`# Conversa - ${d}`);
+          md.push('');
+
+          for (const it of items) {
+            const when = (() => {
+              try {
+                const dt = new Date(Number(it.ts || 0));
+                const hh = String(dt.getHours()).padStart(2, '0');
+                const mm = String(dt.getMinutes()).padStart(2, '0');
+                return `${hh}:${mm}`;
+              } catch { return ''; }
+            })();
+            const who = it.role === 'user' ? 'Você' : 'FREYA';
+            md.push(`## [${when}] ${who}`);
+            md.push('');
+            md.push(String(it.text || '').trimEnd());
+            md.push('');
+          }
+
+          fs.writeFileSync(outPath, md.join('\n') + '\n', 'utf8');
+          return safeJson(res, 200, { ok: true, relPath: path.relative(workspaceDir, outPath).replace(/\\/g, '/') });
         }
 
         if (req.url === '/api/tasks/list') {

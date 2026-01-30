@@ -13,7 +13,9 @@
     lastApplied: null,
     autoApply: true,
     autoRunReports: false,
-    prettyPublish: true
+    prettyPublish: true,
+    chatSessionId: null,
+    chatLoaded: false
   };
 
   function applyTheme(theme) {
@@ -114,6 +116,41 @@
     return html;
   }
 
+  function ensureChatSession() {
+    if (state.chatSessionId) return state.chatSessionId;
+    try {
+      const fromLocal = localStorage.getItem('freya.chatSessionId');
+      if (fromLocal) {
+        state.chatSessionId = fromLocal;
+        return state.chatSessionId;
+      }
+    } catch {}
+
+    const id = (typeof crypto !== 'undefined' && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : ('sess-' + Date.now() + '-' + Math.random().toString(16).slice(2, 8));
+
+    state.chatSessionId = id;
+    try { localStorage.setItem('freya.chatSessionId', id); } catch {}
+    return id;
+  }
+
+  async function persistChatItem(item) {
+    try {
+      const sessionId = ensureChatSession();
+      await api('/api/chat/append', {
+        dir: dirOrDefault(),
+        sessionId,
+        role: item.role,
+        text: item.text,
+        markdown: !!item.markdown,
+        ts: item.ts
+      });
+    } catch {
+      // best-effort (chat still works)
+    }
+  }
+
   function chatAppend(role, text, opts = {}) {
     const thread = $('chatThread');
     if (!thread) return;
@@ -123,7 +160,7 @@
 
     const meta = document.createElement('div');
     meta.className = 'bubbleMeta';
-    meta.textContent = role === 'user' ? 'You' : 'FREYA';
+    meta.textContent = role === 'user' ? 'Você' : 'FREYA';
 
     const body = document.createElement('div');
     body.className = 'bubbleBody';
@@ -139,10 +176,68 @@
     bubble.appendChild(body);
     thread.appendChild(bubble);
 
+    // persist
+    persistChatItem({ ts: Date.now(), role, markdown: !!opts.markdown, text: raw });
+
     // keep newest in view
     try {
       thread.scrollTop = thread.scrollHeight;
     } catch {}
+  }
+
+  async function loadChatHistory() {
+    if (state.chatLoaded) return;
+    state.chatLoaded = true;
+    const thread = $('chatThread');
+    if (!thread) return;
+
+    try {
+      const sessionId = ensureChatSession();
+      const r = await api('/api/chat/load', { dir: dirOrDefault(), sessionId });
+      const items = (r && Array.isArray(r.items)) ? r.items : [];
+      if (items.length) {
+        thread.innerHTML = '';
+        for (const it of items) {
+          const role = it.role === 'user' ? 'user' : 'assistant';
+          const text = String(it.text || '');
+          const markdown = !!it.markdown;
+          // render without re-persisting
+          const bubble = document.createElement('div');
+          bubble.className = 'bubble ' + (role === 'user' ? 'user' : 'assistant');
+          const meta = document.createElement('div');
+          meta.className = 'bubbleMeta';
+          meta.textContent = role === 'user' ? 'Você' : 'FREYA';
+          const body = document.createElement('div');
+          body.className = 'bubbleBody';
+          if (markdown) body.innerHTML = renderMarkdown(text);
+          else body.innerHTML = escapeHtml(text).replace(/\n/g, '<br>');
+          bubble.appendChild(meta);
+          bubble.appendChild(body);
+          thread.appendChild(bubble);
+        }
+        try { thread.scrollTop = thread.scrollHeight; } catch {}
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  async function exportChatObsidian() {
+    try {
+      const sessionId = ensureChatSession();
+      setPill('run', 'exportando…');
+      const r = await api('/api/chat/export-obsidian', { dir: dirOrDefault(), sessionId });
+      const rel = r && r.relPath ? r.relPath : '';
+      if (rel) {
+        chatAppend('assistant', `Conversa exportada para: **${rel}**`, { markdown: true });
+        setPill('ok', 'exportado');
+      } else {
+        setPill('ok', 'exportado');
+      }
+      setTimeout(() => setPill('ok', 'pronto'), 800);
+    } catch (e) {
+      setPill('err', 'export falhou');
+    }
   }
 
   function setOut(text) {
@@ -906,6 +1001,7 @@
     refreshReports();
     refreshToday();
     reloadSlugRules();
+    loadChatHistory();
   })();
 
   setPill('ok', 'pronto');
@@ -938,4 +1034,5 @@
   window.togglePrettyPublish = togglePrettyPublish;
   window.applyPlan = applyPlan;
   window.runSuggestedReports = runSuggestedReports;
+  window.exportChatObsidian = exportChatObsidian;
 })();
