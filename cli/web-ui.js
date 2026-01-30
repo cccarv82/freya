@@ -843,6 +843,11 @@
 
       setOut(msg);
       chatAppend('assistant', msg, { markdown: true });
+
+      // After apply, refresh panels so the UI reflects the new state (tasks/blockers/reports)
+      try { await refreshToday(); } catch {}
+      try { await refreshReports({ selectLatest: true }); } catch {}
+
       setPill('ok', 'applied');
       setTimeout(() => setPill('ok', 'pronto'), 800);
     } catch (e) {
