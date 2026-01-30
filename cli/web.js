@@ -631,6 +631,7 @@ async function copilotSearch(workspaceDir, query, opts = {}) {
     'Responda APENAS com JSON válido (sem code fences) no formato:',
     '{"summary":"<1-2 frases humanas>","matches":[{"file":"<caminho relativo>","date":"YYYY-MM-DD ou vazio","snippet":"<trecho curto>"}]}',
     `Limite de matches: ${limit}.`,
+    'O resumo deve soar humano e mencionar a quantidade de registros encontrados.',
     'A lista deve estar ordenada por relevância.'
   ].join('\n');
 
@@ -639,7 +640,6 @@ async function copilotSearch(workspaceDir, query, opts = {}) {
     '--no-color',
     '--stream',
     'off',
-    '--non-interactive',
     '-p',
     prompt,
     '--allow-all-tools',
@@ -689,17 +689,13 @@ function buildChatAnswer(query, matches, summary) {
     if (count === 0) {
       summaryText = `Não encontrei registros relacionados a "${query}".`;
     } else {
-      summaryText = `Resultados relacionados a "${query}".`;
+      summaryText = `Encontrei ${count} registro(s) relacionados a "${query}".`;
     }
   }
 
   const lines = [];
-  if (count === 0) {
-    lines.push(`Encontrei 0 registro(s).`);
-  } else {
-    lines.push(`Encontrei ${count} registro(s):`);
-  }
-  lines.push(`Resumo: ${summaryText}`);
+  lines.push(`Encontrei ${count} registro(s).`);
+  lines.push(`Resumo (${count} registro(s)): ${summaryText}`);
 
   for (const m of matches) {
     const parts = [];
