@@ -988,7 +988,8 @@
   }
 
   // init
-  applyTheme(localStorage.getItem('freya.theme') || 'dark');
+  applyTheme('dark');
+  try { localStorage.setItem('freya.theme', 'dark'); } catch (err) {}
   $('chipPort').textContent = location.host;
   loadLocal();
 
