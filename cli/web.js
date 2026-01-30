@@ -901,14 +901,14 @@ function buildHtml(safeDefault, appVersion) {
             <div class="railLogo">F</div>
           </div>
           <div class="railNav">
-            <button class="railBtn active" type="button" title="Dashboard">H</button>
-            <button class="railBtn" type="button" title="Workspace">W</button>
-            <button class="railBtn" type="button" title="Relatórios">R</button>
+            <button class="railBtn active" type="button" title="Dashboard" onclick="window.scrollTo({ top: 0, behavior: 'smooth' })">D</button>
+            <button class="railBtn" type="button" title="Relatórios" onclick="document.getElementById('reportsSection')?.scrollIntoView({ behavior: 'smooth' })">R</button>
+            <button class="railBtn" type="button" title="Relatórios (atalho 2)">R</button>
             <button class="railBtn" type="button" title="Preview">P</button>
             <button class="railBtn" type="button" title="Conversa">C</button>
           </div>
           <div class="railBottom">
-            <button class="railBtn railToggle" id="themeToggle" type="button" onclick="toggleTheme()">Claro</button>
+            <div class="railStatus" id="railStatus" title="status"></div>
           </div>
         </aside>
 
@@ -954,7 +954,7 @@ function buildHtml(safeDefault, appVersion) {
               </div>
             </section>
 
-            <section class="utilityGrid">
+            <section class="utilityGrid" id="reportsSection">
               <div class="utilityCard">
                 <div class="utilityHead">Área de trabalho</div>
                 <div class="sidePath" id="sidePath">./freya</div>

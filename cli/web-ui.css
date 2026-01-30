@@ -171,6 +171,21 @@ body {
 .dot { width: 10px; height: 10px; border-radius: 6px; background: rgba(148,163,184,.6); }
 .dot.ok { background: rgba(16,185,129,.85); }
 .dot.err { background: rgba(239,68,68,.85); }
+.dot.run { background: rgba(56,189,248,.9); }
+.dot.plan { background: rgba(250,204,21,.9); }
+
+.railStatus {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line2);
+  background: rgba(148,163,184,.6);
+  box-shadow: 0 0 0 4px rgba(0,0,0,.25);
+}
+.railStatus.ok { background: rgba(16,185,129,.9); }
+.railStatus.err { background: rgba(239,68,68,.9); }
+.railStatus.run { background: rgba(56,189,248,.9); }
+.railStatus.plan { background: rgba(250,204,21,.9); }
 
 .sidePath {
   margin: 10px 6px 10px;

@@ -32,10 +32,12 @@
 
   function setPill(kind, text) {
     const dot = $('dot');
-    if (!dot) return;
-    dot.classList.remove('ok', 'err');
-    if (kind === 'ok') dot.classList.add('ok');
-    if (kind === 'err') dot.classList.add('err');
+    const rail = $('railStatus');
+    const classes = ['ok', 'err', 'run', 'plan'];
+    if (dot) dot.classList.remove(...classes);
+    if (rail) rail.classList.remove(...classes);
+    if (dot && classes.includes(kind)) dot.classList.add(kind);
+    if (rail && classes.includes(kind)) rail.classList.add(kind);
     const pill = $('pill');
     if (pill) pill.textContent = text;
     const status = $('status');
