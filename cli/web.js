@@ -631,11 +631,11 @@ async function copilotSearch(workspaceDir, query, opts = {}) {
     `Consulta do usuário: "${q}"`,
     '',
     'Responda APENAS com JSON válido (sem code fences) no formato:',
-    '{"summary":"<1-2 frases humanas>","matches":[{"file":"<caminho relativo>","date":"YYYY-MM-DD ou vazio","snippet":"<trecho curto>"}]}',
+    '{"answer":"<resposta humana, clara e direta>","evidence":[{"file":"<caminho relativo>","date":"YYYY-MM-DD ou vazio","detail":"<frase curta e única com a evidência>"}],"matches":[{"file":"<caminho relativo>","date":"YYYY-MM-DD ou vazio","snippet":"<trecho curto>"}]}',
     `Limite de matches: ${limit}.`,
-    'O resumo deve soar humano, bem escrito e mencionar a quantidade de registros encontrados.',
+    'A resposta deve soar humana, bem escrita, sem repetições, e mencionar a quantidade de registros encontrados.',
     'Priorize responder exatamente à pergunta (ex.: data e ID da última CHG).',
-    'Evite repetir o mesmo trecho; escolha evidências mais úteis.',
+    'Na seção evidence, escreva evidências curtas e não repetidas (máx 5).',
     'A lista deve estar ordenada por relevância.'
   ].join('\n');
 
@@ -682,36 +682,60 @@ async function copilotSearch(workspaceDir, query, opts = {}) {
     .filter((m) => m.file && isAllowedChatSearchPath(m.file))
     .slice(0, limit);
 
-  const summary = String(parsed.summary || '').trim();
-  return { ok: true, summary, matches };
+  const evidenceRaw = Array.isArray(parsed.evidence) ? parsed.evidence : [];
+  const evidence = evidenceRaw
+    .map((m) => {
+      const fileRaw = String(m && m.file ? m.file : '').trim();
+      const dateRaw = String(m && m.date ? m.date : '').trim();
+      const detailRaw = String(m && m.detail ? m.detail : '').trim();
+      let rel = fileRaw;
+      if (fileRaw.startsWith(workspaceDir)) {
+        rel = path.relative(workspaceDir, fileRaw).replace(/\\/g, '/');
+      }
+      return { file: rel.replace(/\\/g, '/'), date: dateRaw, detail: detailRaw };
+    })
+    .filter((m) => m.file && m.detail && isAllowedChatSearchPath(m.file))
+    .slice(0, 5);
+
+  const answer = String(parsed.answer || '').trim();
+  return { ok: true, answer, matches, evidence };
 }
 
-function buildChatAnswer(query, matches, summary) {
+function buildChatAnswer(query, matches, summary, evidence, answer) {
   const count = matches.length;
   let summaryText = String(summary || '').trim();
-  if (!summaryText) {
-    if (count === 0) {
-      summaryText = `Não encontrei registros relacionados a "${query}".`;
-    } else {
-      summaryText = `Encontrei ${count} registro(s) relacionados a "${query}".`;
+  let answerText = String(answer || '').trim();
+  if (!answerText) {
+    if (!summaryText) {
+      if (count === 0) {
+        summaryText = `Não encontrei registros relacionados a "${query}".`;
+      } else {
+        summaryText = `Encontrei ${count} registro(s) relacionados a "${query}".`;
+      }
     }
+    answerText = summaryText;
   }
 
   const lines = [];
   lines.push(`Encontrei ${count} registro(s).`);
-  lines.push(`Resumo: ${summaryText}`);
+  lines.push(`Resumo: ${answerText}`);
 
-  if (!matches.length) return lines.join('\n');
+  const evidences = Array.isArray(evidence) && evidence.length
+    ? evidence
+    : matches.slice(0, 5).map((m) => ({ file: m.file, date: m.date, detail: m.snippet }));
+
+  if (!evidences.length) return lines.join('\n');
 
   lines.push('');
   lines.push('Principais evidências:');
-  for (const m of matches.slice(0, 5)) {
+  for (const m of evidences.slice(0, 5)) {
     const parts = [];
     if (m.date) parts.push(`**${m.date}**`);
     if (m.file) parts.push('`' + m.file + '`');
     const prefix = parts.length ? parts.join(' — ') + ':' : '';
-    const snippet = m.snippet ? String(m.snippet).trim() : '';
-    lines.push(`- ${prefix} ${snippet}`);
+    const detail = (m.detail || m.snippet || '').toString().trim();
+    if (!detail) continue;
+    lines.push(`- ${prefix} ${detail}`);
   }
 
   return lines.join('\n');
@@ -1735,7 +1759,13 @@ async function cmdWeb({ port, dir, open, dev }) {
           const copilotResult = await copilotSearch(workspaceDir, query, { limit: 8 });
           if (copilotResult.ok) {
             const matches = copilotResult.matches || [];
-            const answer = buildChatAnswer(query, matches, copilotResult.summary);
+            const answer = buildChatAnswer(
+              query,
+              matches,
+              copilotResult.summary,
+              copilotResult.evidence,
+              copilotResult.answer
+            );
             return safeJson(res, 200, { ok: true, sessionId, answer, matches });
           }
 
