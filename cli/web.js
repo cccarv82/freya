@@ -611,6 +611,7 @@ function run(cmd, args, cwd) {
 function isAllowedChatSearchPath(relPath) {
   if (!relPath) return false;
   if (relPath.startsWith('..')) return false;
+  if (relPath.startsWith('data/chat/')) return false;
   return relPath.startsWith('data/') || relPath.startsWith('logs/') || relPath.startsWith('docs/');
 }
 
@@ -625,13 +626,16 @@ async function copilotSearch(workspaceDir, query, opts = {}) {
     'Você é um buscador local de arquivos.',
     'Objetivo: encontrar registros relevantes para a consulta do usuário.',
     'Escopo: procure SOMENTE nos diretórios data/, logs/ e docs/ do workspace.',
+    'Exclua data/chat/ (conversa), a menos que o usuário peça explicitamente por chat.',
     'Use ferramentas para ler/consultar arquivos, mas não modifique nada.',
     `Consulta do usuário: "${q}"`,
     '',
     'Responda APENAS com JSON válido (sem code fences) no formato:',
     '{"summary":"<1-2 frases humanas>","matches":[{"file":"<caminho relativo>","date":"YYYY-MM-DD ou vazio","snippet":"<trecho curto>"}]}',
     `Limite de matches: ${limit}.`,
-    'O resumo deve soar humano e mencionar a quantidade de registros encontrados.',
+    'O resumo deve soar humano, bem escrito e mencionar a quantidade de registros encontrados.',
+    'Priorize responder exatamente à pergunta (ex.: data e ID da última CHG).',
+    'Evite repetir o mesmo trecho; escolha evidências mais úteis.',
     'A lista deve estar ordenada por relevância.'
   ].join('\n');
 
@@ -695,9 +699,13 @@ function buildChatAnswer(query, matches, summary) {
 
   const lines = [];
   lines.push(`Encontrei ${count} registro(s).`);
-  lines.push(`Resumo (${count} registro(s)): ${summaryText}`);
+  lines.push(`Resumo: ${summaryText}`);
 
-  for (const m of matches) {
+  if (!matches.length) return lines.join('\n');
+
+  lines.push('');
+  lines.push('Principais evidências:');
+  for (const m of matches.slice(0, 5)) {
     const parts = [];
     if (m.date) parts.push(`**${m.date}**`);
     if (m.file) parts.push('`' + m.file + '`');
