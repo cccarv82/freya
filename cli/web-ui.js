@@ -71,8 +71,10 @@
         codes.push(c);
         return `@@CODE${idx}@@`;
       });
-      out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-      out = out.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+      out = out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      out = out.replace(/__(.+?)__/g, '<strong>$1</strong>');
+      out = out.replace(/\*(.+?)\*/g, '<em>$1</em>');
+      out = out.replace(/_(.+?)_/g, '<em>$1</em>');
       out = out.replace(/@@CODE(\d+)@@/g, (_, i) => `<code class="md-inline">${codes[Number(i)]}</code>`);
       return out;
     };
@@ -516,13 +518,24 @@
 
   function downloadReportPdf(item) {
     const text = state.reportTexts[item.relPath] || '';
-    const html = `<!doctype html><html><head><meta charset="utf-8" /><title>${escapeHtml(item.name)}</title><style>body{font-family:Arial, sans-serif; padding:32px; color:#111;} h1,h2,h3{margin:16px 0 8px;} pre{background:#f5f5f5; padding:12px; border-radius:8px;}</style></head><body>${renderMarkdown(text)}</body></html>`;
-    const win = window.open('', '_blank');
-    if (!win) return;
-    win.document.write(html);
-    win.document.close();
-    win.focus();
-    win.print();
+    const html = `<!doctype html><html><head><meta charset="utf-8" /><title>${escapeHtml(item.name)}</title><style>body{font-family:Arial, sans-serif; padding:32px; color:#111; line-height:1.5;} h1,h2,h3{margin:16px 0 8px;} ul{padding-left:18px;} code{font-family:monospace;} pre{background:#f5f5f5; padding:12px; border-radius:8px;}</style></head><body>${renderMarkdown(text)}</body></html>`;
+    const frame = document.createElement('iframe');
+    frame.style.position = 'fixed';
+    frame.style.right = '0';
+    frame.style.bottom = '0';
+    frame.style.width = '0';
+    frame.style.height = '0';
+    frame.style.border = '0';
+    document.body.appendChild(frame);
+    const doc = frame.contentWindow.document;
+    doc.open();
+    doc.write(html);
+    doc.close();
+    frame.onload = () => {
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+      setTimeout(() => frame.remove(), 1000);
+    };
   }
 
   function renderReportsPage() {
@@ -571,31 +584,43 @@
         raw.addEventListener('input', () => {
           state.reportTexts[item.relPath] = raw.value;
           autoGrowTextarea(raw);
+          if (state.reportModes[item.relPath] !== 'raw' && preview && !preview.dataset.editing) {
+            preview.innerHTML = renderMarkdown(raw.value);
+          }
         });
       }
 
       if (preview) {
-        preview.addEventListener('input', () => {
-          const val = preview.innerText || '';
+        preview.addEventListener('focus', () => {
+          preview.dataset.editing = '1';
+          preview.textContent = state.reportTexts[item.relPath] || '';
+        });
+        preview.addEventListener('blur', () => {
+          preview.dataset.editing = '';
+          const val = preview.textContent || '';
           state.reportTexts[item.relPath] = val;
           if (raw) {
             raw.value = val;
             autoGrowTextarea(raw);
           }
+          preview.innerHTML = renderMarkdown(val);
         });
       }
 
       const toggleBtn = card.querySelector('[data-action="toggle"]');
       if (toggleBtn) {
-        toggleBtn.onclick = () => {
+        toggleBtn.onclick = (ev) => {
+          ev.stopPropagation();
           state.reportModes[item.relPath] = (state.reportModes[item.relPath] === 'raw') ? 'preview' : 'raw';
+          state.reportExpanded[item.relPath] = true;
           renderReportsPage();
         };
       }
 
       const saveBtn = card.querySelector('[data-action="save"]');
       if (saveBtn) {
-        saveBtn.onclick = async () => {
+        saveBtn.onclick = async (ev) => {
+          ev.stopPropagation();
           try {
             const content = (raw && typeof raw.value === 'string') ? raw.value : (state.reportTexts[item.relPath] || '');
             setPill('run', 'salvando…');
@@ -620,8 +645,8 @@
 
       const head = card.querySelector('[data-action="expand"]');
       if (head) {
-        head.onclick = () => {
-          state.reportExpanded = state.reportExpanded || {};
+        head.onclick = (ev) => {
+          if (ev.target && ev.target.closest('.reportHeadActions')) return;
           state.reportExpanded[item.relPath] = !state.reportExpanded[item.relPath];
           renderReportsPage();
         };
