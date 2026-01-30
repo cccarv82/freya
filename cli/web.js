@@ -277,6 +277,38 @@ function postTeamsCard(url, card) {
   return postJson(url, card);
 }
 
+function extractFirstJsonObject(text) {
+  const t = String(text || '');
+  const start = t.indexOf('{');
+  if (start === -1) return null;
+
+  let depth = 0;
+  let inString = false;
+  let esc = false;
+
+  for (let i = start; i < t.length; i++) {
+    const ch = t[i];
+
+    if (esc) { esc = false; continue; }
+    if (ch === '\\') { esc = true; continue; }
+
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) continue;
+
+    if (ch === '{') depth++;
+    if (ch === '}') {
+      depth--;
+      if (depth === 0) return t.slice(start, i + 1);
+    }
+  }
+
+  return null;
+}
+
 function escapeJsonControlChars(jsonText) {
   // Replace unescaped control chars inside JSON string literals with safe escapes.
   // Handles Copilot outputs where newlines/tabs leak into string values.
@@ -1206,14 +1238,7 @@ async function cmdWeb({ port, dir, open, dev }) {
           const planRaw = String(payload.plan || '').trim();
           if (!planRaw) return safeJson(res, 400, { error: 'Missing plan' });
 
-          function extractJson(text) {
-            const start = text.indexOf('{');
-            const end = text.lastIndexOf('}');
-            if (start === -1 || end === -1 || end <= start) return null;
-            return text.slice(start, end + 1);
-          }
-
-          const jsonText = extractJson(planRaw) || planRaw;
+          const jsonText = extractFirstJsonObject(planRaw) || planRaw;
           let plan;
           try {
             plan = JSON.parse(jsonText);
@@ -1298,14 +1323,7 @@ async function cmdWeb({ port, dir, open, dev }) {
           const planRaw = String(payload.plan || '').trim();
           if (!planRaw) return safeJson(res, 400, { error: 'Missing plan' });
 
-          function extractJson(text) {
-            const start = text.indexOf('{');
-            const end = text.lastIndexOf('}');
-            if (start === -1 || end === -1 || end <= start) return null;
-            return text.slice(start, end + 1);
-          }
-
-          const jsonText = extractJson(planRaw) || planRaw;
+          const jsonText = extractFirstJsonObject(planRaw) || planRaw;
 
           function errorSnippet(text, pos) {
             const p = Number.isFinite(pos) ? pos : 0;
