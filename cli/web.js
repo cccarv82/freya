@@ -677,6 +677,7 @@ function buildHtml(safeDefault) {
     <div class="frame">
       <div class="shell">
 
+        <!-- LEFT: Workspaces / Topics -->
         <aside class="sidebar">
           <div class="sideHeader">
             <div class="logo">FREYA</div>
@@ -686,47 +687,41 @@ function buildHtml(safeDefault) {
           <div class="sidePath" id="sidePath">./freya</div>
 
           <div class="sideGroup">
-            <div class="sideTitle">Workspace</div>
-            <button class="btn sideBtn" onclick="pickDir()">Select workspace…</button>
-            <button class="btn sideBtn" onclick="doUpdate()">Sync workspace</button>
-            <button class="btn sideBtn" onclick="doMigrate()">Migrate data</button>
+            <div class="sideTitle">Workspaces</div>
+            <div class="row" style="grid-template-columns: 1fr auto">
+              <input id="dir" placeholder="./freya" />
+              <button class="btn small" onclick="pickDir()">Browse</button>
+            </div>
+            <div class="stack" style="margin-top:10px">
+              <button class="btn sideBtn" onclick="doUpdate()">Sync workspace</button>
+              <button class="btn sideBtn" onclick="doMigrate()">Migrate data</button>
+            </div>
             <div style="height:10px"></div>
             <div class="help"><b>Sync workspace</b>: atualiza scripts/templates/agents na pasta <code>freya</code> sem sobrescrever <code>data/</code> e <code>logs/</code>.</div>
             <div class="help"><b>Migrate data</b>: ajusta formatos/schemaVersion quando uma versão nova exige.</div>
           </div>
 
           <div class="sideGroup">
-            <div class="sideTitle">Atalhos</div>
+            <div class="sideTitle">Quick reports</div>
+            <div class="cardsMini">
+              <button class="miniCard" type="button" onclick="runReport('status')"><span class="miniIcon">E</span><span>Executive</span></button>
+              <button class="miniCard" type="button" onclick="runReport('sm-weekly')"><span class="miniIcon">S</span><span>SM weekly</span></button>
+              <button class="miniCard" type="button" onclick="runReport('blockers')"><span class="miniIcon warn">B</span><span>Blockers</span></button>
+              <button class="miniCard" type="button" onclick="runReport('daily')"><span class="miniIcon">D</span><span>Daily</span></button>
+            </div>
+            <div class="help" style="margin-top:8px">Clique para gerar e atualizar o preview/publicação.</div>
+          </div>
+
+          <div class="sideGroup">
+            <div class="sideTitle">Tips</div>
             <div class="help"><span class="k">--dev</span> cria dados de exemplo para testar rápido.</div>
             <div style="height:8px"></div>
             <div class="help"><span class="k">--port</span> muda a porta (default 3872).</div>
           </div>
-
-          <div class="sideGroup">
-            <div class="sideTitle">Daily Input</div>
-            <textarea id="inboxText" rows="6" placeholder="Cole aqui updates do dia (status, blockers, decisões, ideias)…" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line); background: rgba(255,255,255,.72); color: var(--text); outline:none; resize: vertical;"></textarea>
-            <div style="height:10px"></div>
-            <div class="stack">
-              <button class="btn primary sideBtn" onclick="saveAndPlan()">Save + Process (Agents)</button>
-              <button class="btn sideBtn" onclick="runSuggestedReports()">Run suggested reports</button>
-            </div>
-
-            <div style="height:10px"></div>
-            <label style="display:flex; align-items:center; gap:10px; user-select:none">
-              <input id="autoApply" type="checkbox" checked style="width:auto" onchange="toggleAutoApply()" />
-              Auto-apply plan
-            </label>
-            <div class="help">Quando ligado, o Save+Process já aplica tasks/blockers automaticamente.</div>
-
-            <label style="display:flex; align-items:center; gap:10px; user-select:none; margin-top:10px">
-              <input id="autoRunReports" type="checkbox" style="width:auto" onchange="toggleAutoRunReports()" />
-              Auto-run suggested reports
-            </label>
-            <div class="help">Quando ligado, após aplicar o plano, ele também roda os reports sugeridos automaticamente.</div>
-          </div>
         </aside>
 
-        <main class="main">
+        <!-- MIDDLE: Reports / Today -->
+        <main class="center">
           <div class="topbar">
             <div class="brand"><span class="spark"></span> Local-first status assistant</div>
             <div class="actions">
@@ -735,97 +730,19 @@ function buildHtml(safeDefault) {
             </div>
           </div>
 
-          <div class="section">
-            <h1>Morning, how can I help?</h1>
-            <div class="subtitle">Selecione uma workspace e gere relatórios (Executive / SM / Blockers / Daily). Você pode publicar no Discord/Teams com 1 clique.</div>
-
-            <div class="cards">
-              <div class="card" onclick="runReport('status')">
-                <div class="icon">E</div>
-                <div class="title">Executive report</div>
-                <div class="desc">Status pronto para stakeholders (entregas, projetos, blockers).</div>
+          <div class="centerBody">
+            <div class="centerHead">
+              <div>
+                <h1 style="margin:0">Your day at a glance</h1>
+                <div class="subtitle">Workspaces, Today (tasks/blockers), reports & preview. Use the right panel as a chat-style capture.</div>
               </div>
-              <div class="card" onclick="runReport('sm-weekly')">
-                <div class="icon">S</div>
-                <div class="title">SM weekly</div>
-                <div class="desc">Resumo, wins, riscos e foco da próxima semana.</div>
-              </div>
-              <div class="card" onclick="runReport('blockers')">
-                <div class="icon orange">B</div>
-                <div class="title">Blockers</div>
-                <div class="desc">Lista priorizada por severidade + idade (pra destravar rápido).</div>
-              </div>
-              <div class="card" onclick="runReport('daily')">
-                <div class="icon">D</div>
-                <div class="title">Daily</div>
-                <div class="desc">Ontem / Hoje / Bloqueios — pronto pra standup.</div>
+              <div class="statusLine">
+                <span class="small" id="last"></span>
               </div>
             </div>
 
-            <div class="grid2">
-              <div class="panel">
-                <div class="panelHead"><b>Workspace & publish settings</b><span class="small" id="last"></span></div>
-                <div class="panelBody">
-                  <label>Workspace dir</label>
-                  <div class="row">
-                    <input id="dir" placeholder="./freya" />
-                    <button class="btn small" onclick="pickDir()">Browse</button>
-                  </div>
-                  <div class="help">Escolha a pasta que contém <code>data/</code>, <code>logs/</code> e <code>scripts/</code>.</div>
-
-                  <div style="height:12px"></div>
-
-                  <label>Discord webhook URL</label>
-                  <input id="discord" placeholder="https://discord.com/api/webhooks/..." />
-                  <div style="height:10px"></div>
-
-                  <label>Teams webhook URL</label>
-                  <input id="teams" placeholder="https://..." />
-                  <div class="help">Os webhooks ficam salvos na workspace em <code>data/settings/settings.json</code>.</div>
-
-                  <div style="height:10px"></div>
-                  <label style="display:flex; align-items:center; gap:10px; user-select:none; margin: 6px 0 12px 0">
-                    <input id="prettyPublish" type="checkbox" checked style="width:auto" onchange="togglePrettyPublish()" />
-                    Pretty publish (cards/embeds)
-                  </label>
-
-                  <div class="stack">
-                    <button class="btn" onclick="saveSettings()">Save settings</button>
-                    <button class="btn" onclick="publish('discord')">Publish selected → Discord</button>
-                    <button class="btn" onclick="publish('teams')">Publish selected → Teams</button>
-                  </div>
-
-                  <div style="height:14px"></div>
-
-                  <div class="help"><b>Dica:</b> clique em um relatório em <i>Reports</i> para ver o preview e habilitar publish/copy.</div>
-
-                  <div style="height:14px"></div>
-                  <label>Project slug rules</label>
-                  <textarea id="slugRules" rows="8" placeholder="{ \"rules\": [ { \"contains\": \"fideliza\", \"slug\": \"vivo/fidelizacao\" } ] }" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line); background: rgba(255,255,255,.72); color: var(--text); outline:none; resize: vertical; font-family: var(--mono);"></textarea>
-                  <div class="help">Regras usadas pra inferir <code>projectSlug</code>. Formato JSON (objeto com <code>rules</code>). Editável no estilo Obsidian-friendly.</div>
-                  <div class="stack" style="margin-top:10px">
-                    <button class="btn" onclick="reloadSlugRules()">Reload rules</button>
-                    <button class="btn" onclick="saveSlugRules()">Save rules</button>
-                    <button class="btn" onclick="exportObsidian()">Export Obsidian notes</button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="panel">
-                <div class="panelHead">
-                  <b>Reports</b>
-                  <div class="stack">
-                    <button class="btn small" onclick="refreshReports()">Refresh</button>
-                  </div>
-                </div>
-                <div class="panelBody">
-                  <input id="reportsFilter" placeholder="filter (ex: daily, executive, 2026-01-29)" style="width:100%; margin-bottom:10px" oninput="renderReportsList()" />
-                  <div id="reportsList" style="display:grid; gap:8px"></div>
-                  <div class="help">Últimos relatórios em <code>docs/reports</code>. Clique para abrir preview.</div>
-                </div>
-              </div>
-
-              <div class="panel">
+            <div class="midGrid">
+              <section class="panel">
                 <div class="panelHead">
                   <b>Today</b>
                   <div class="stack">
@@ -839,9 +756,23 @@ function buildHtml(safeDefault) {
                   <div class="small" style="margin-bottom:8px; opacity:.8">Open blockers</div>
                   <div id="blockersList" style="display:grid; gap:8px"></div>
                 </div>
-              </div>
+              </section>
 
-              <div class="panel">
+              <section class="panel">
+                <div class="panelHead">
+                  <b>Reports</b>
+                  <div class="stack">
+                    <button class="btn small" onclick="refreshReports()">Refresh</button>
+                  </div>
+                </div>
+                <div class="panelBody">
+                  <input id="reportsFilter" placeholder="filter (ex: daily, executive, 2026-01-29)" style="width:100%; margin-bottom:10px" oninput="renderReportsList()" />
+                  <div id="reportsList" style="display:grid; gap:8px"></div>
+                  <div class="help">Últimos relatórios em <code>docs/reports</code>. Clique para abrir preview.</div>
+                </div>
+              </section>
+
+              <section class="panel midSpan">
                 <div class="panelHead">
                   <b>Preview</b>
                   <div class="stack">
@@ -857,10 +788,105 @@ function buildHtml(safeDefault) {
                   <div id="reportPreview" class="log md" style="font-family: var(--sans);"></div>
                   <div class="help">O preview renderiza Markdown básico (headers, listas, code). O botão Copy copia o conteúdo completo.</div>
                 </div>
-              </div>
+              </section>
             </div>
+
+            <details class="devDrawer" id="devDrawer">
+              <summary>Developer</summary>
+              <div class="devBody">
+                <div class="devGrid">
+                  <div class="panel">
+                    <div class="panelHead"><b>Publish settings</b></div>
+                    <div class="panelBody">
+                      <label>Discord webhook URL</label>
+                      <input id="discord" placeholder="https://discord.com/api/webhooks/..." />
+                      <div style="height:10px"></div>
+
+                      <label>Teams webhook URL</label>
+                      <input id="teams" placeholder="https://..." />
+                      <div class="help">Os webhooks ficam salvos na workspace em <code>data/settings/settings.json</code>.</div>
+
+                      <div style="height:10px"></div>
+                      <label style="display:flex; align-items:center; gap:10px; user-select:none; margin: 6px 0 12px 0">
+                        <input id="prettyPublish" type="checkbox" checked style="width:auto" onchange="togglePrettyPublish()" />
+                        Pretty publish (cards/embeds)
+                      </label>
+
+                      <div class="stack">
+                        <button class="btn" onclick="saveSettings()">Save settings</button>
+                        <button class="btn" onclick="publish('discord')">Publish selected → Discord</button>
+                        <button class="btn" onclick="publish('teams')">Publish selected → Teams</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="panel">
+                    <div class="panelHead"><b>Slug rules & export</b></div>
+                    <div class="panelBody">
+                      <label>Project slug rules</label>
+                      <textarea id="slugRules" rows="8" placeholder="{ \"rules\": [ { \"contains\": \"fideliza\", \"slug\": \"vivo/fidelizacao\" } ] }" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line); background: rgba(255,255,255,.72); color: var(--text); outline:none; resize: vertical; font-family: var(--mono);"></textarea>
+                      <div class="help">Regras usadas pra inferir <code>projectSlug</code>. Formato JSON (objeto com <code>rules</code>).</div>
+                      <div class="stack" style="margin-top:10px">
+                        <button class="btn" onclick="reloadSlugRules()">Reload rules</button>
+                        <button class="btn" onclick="saveSlugRules()">Save rules</button>
+                        <button class="btn" onclick="exportObsidian()">Export Obsidian notes</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="panel">
+                    <div class="panelHead"><b>Debug</b></div>
+                    <div class="panelBody">
+                      <div class="help">Logs ficam em <code>logs/</code> e debug traces em <code>.debuglogs/</code> dentro da workspace.</div>
+                      <div class="help">Use <b>Open file</b> / <b>Copy path</b> no Preview para abrir/compartilhar o relatório selecionado.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </details>
           </div>
         </main>
+
+        <!-- RIGHT: Chat -->
+        <aside class="chatPane">
+          <div class="chatHead">
+            <div>
+              <div class="chatTitle">Chat</div>
+              <div class="chatSub">Capture updates, then let Agents plan/apply.</div>
+            </div>
+          </div>
+
+          <div class="chatThread" id="chatThread">
+            <div class="bubble assistant">
+              <div class="bubbleMeta">FREYA</div>
+              <div class="bubbleBody">Cole seus updates (status, blockers, decisões, ideias) e clique em <b>Save + Process</b>.</div>
+            </div>
+          </div>
+
+          <div class="chatComposer">
+            <textarea id="inboxText" rows="5" placeholder="Cole aqui updates do dia (status, blockers, decisões, ideias)…"></textarea>
+
+            <div class="composerActions">
+              <button class="btn primary" type="button" onclick="saveAndPlan()">Save + Process (Agents)</button>
+              <button class="btn" type="button" onclick="runSuggestedReports()">Run suggested reports</button>
+            </div>
+
+            <div class="composerToggles">
+              <label class="toggleRow">
+                <input id="autoApply" type="checkbox" checked style="width:auto" onchange="toggleAutoApply()" />
+                Auto-apply plan
+              </label>
+              <label class="toggleRow">
+                <input id="autoRunReports" type="checkbox" style="width:auto" onchange="toggleAutoRunReports()" />
+                Auto-run suggested reports
+              </label>
+            </div>
+
+            <div class="statusFooter">
+              <span id="status" class="small">idle</span>
+            </div>
+          </div>
+        </aside>
 
       </div>
     </div>
