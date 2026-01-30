@@ -681,13 +681,13 @@ function buildHtml(safeDefault) {
         <aside class="sidebar">
           <div class="sideHeader">
             <div class="logo">FREYA</div>
-            <div class="statusPill"><span class="dot" id="dot"></span><span id="pill">idle</span></div>
+            <div class="statusPill"><span class="dot" id="dot"></span><span id="pill">pronto</span></div>
           </div>
 
           <div class="sidePath" id="sidePath">./freya</div>
 
           <div class="sideGroup">
-            <div class="sideTitle">Workspaces</div>
+            <div class="sideTitle">Área de trabalho</div>
             <div class="help" style="margin-top:-4px">Selecione sua pasta <code>freya/</code> e sincronize quando precisar.</div>
             <div class="row" style="grid-template-columns: 1fr auto">
               <input id="dir" placeholder="./freya" />
@@ -810,13 +810,13 @@ function buildHtml(safeDefault) {
                       <div style="height:10px"></div>
                       <label style="display:flex; align-items:center; gap:10px; user-select:none; margin: 6px 0 12px 0">
                         <input id="prettyPublish" type="checkbox" checked style="width:auto" onchange="togglePrettyPublish()" />
-                        Pretty publish (cards/embeds)
+                        Publicação bonita (cards/embeds)
                       </label>
 
                       <div class="stack">
-                        <button class="btn" onclick="saveSettings()">Save settings</button>
-                        <button class="btn" onclick="publish('discord')">Publish selected → Discord</button>
-                        <button class="btn" onclick="publish('teams')">Publish selected → Teams</button>
+                        <button class="btn" onclick="saveSettings()">Salvar configurações</button>
+                        <button class="btn" onclick="publish('discord')">Publicar selecionado → Discord</button>
+                        <button class="btn" onclick="publish('teams')">Publicar selecionado → Teams</button>
                       </div>
                     </div>
                   </div>
@@ -824,13 +824,13 @@ function buildHtml(safeDefault) {
                   <div class="panel">
                     <div class="panelHead"><b>Slugs & Export</b></div>
                     <div class="panelBody">
-                      <label>Project slug rules</label>
+                      <label>Regras de slug do projeto</label>
                       <textarea id="slugRules" rows="8" placeholder="{ \"rules\": [ { \"contains\": \"fideliza\", \"slug\": \"vivo/fidelizacao\" } ] }" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line); background: rgba(255,255,255,.72); color: var(--text); outline:none; resize: vertical; font-family: var(--mono);"></textarea>
                       <div class="help">Regras usadas pra inferir <code>projectSlug</code>. Formato JSON (objeto com <code>rules</code>).</div>
                       <div class="stack" style="margin-top:10px">
-                        <button class="btn" onclick="reloadSlugRules()">Reload rules</button>
-                        <button class="btn" onclick="saveSlugRules()">Save rules</button>
-                        <button class="btn" onclick="exportObsidian()">Export Obsidian notes</button>
+                        <button class="btn" onclick="reloadSlugRules()">Recarregar regras</button>
+                        <button class="btn" onclick="saveSlugRules()">Salvar regras</button>
+                        <button class="btn" onclick="exportObsidian()">Exportar notas (Obsidian)</button>
                       </div>
                     </div>
                   </div>
@@ -852,7 +852,7 @@ function buildHtml(safeDefault) {
         <aside class="chatPane">
           <div class="chatHead">
             <div>
-              <div class="chatTitle">Chat</div>
+              <div class="chatTitle">Conversa</div>
               <div class="chatSub">Cole seus updates e deixe os Agents planejar/aplicar.</div>
             </div>
           </div>
@@ -868,8 +868,8 @@ function buildHtml(safeDefault) {
             <textarea id="inboxText" rows="5" placeholder="Cole aqui updates do dia (status, blockers, decisões, ideias)…"></textarea>
 
             <div class="composerActions">
-              <button class="btn primary" type="button" onclick="saveAndPlan()">Save + Process (Agents)</button>
-              <button class="btn" type="button" onclick="runSuggestedReports()">Run suggested reports</button>
+              <button class="btn primary" type="button" onclick="saveAndPlan()">Salvar + Processar (Agents)</button>
+              <button class="btn" type="button" onclick="runSuggestedReports()">Rodar relatórios sugeridos</button>
             </div>
 
             <div class="composerToggles">
@@ -884,7 +884,7 @@ function buildHtml(safeDefault) {
             </div>
 
             <div class="statusFooter">
-              <span id="status" class="small">idle</span>
+              <span id="status" class="small">pronto</span>
             </div>
           </div>
         </aside>
