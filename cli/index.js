@@ -1,5 +1,6 @@
 'use strict';
 
+const fs = require('fs');
 const path = require('path');
 
 const { cmdInit } = require('./init');
@@ -59,7 +60,7 @@ async function run(argv) {
   const command = args[0];
 
   if (!command || command === 'help' || flags.has('--help') || flags.has('-h')) {
-    process.stdout.write(usage());
+    fs.writeSync(process.stdout.fd, usage());
     return;
   }
 
@@ -95,7 +96,7 @@ async function run(argv) {
   }
 
   process.stderr.write(`Unknown command: ${command}\n`);
-  process.stdout.write(usage());
+  fs.writeSync(process.stdout.fd, usage());
   process.exitCode = 1;
 }
 

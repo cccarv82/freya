@@ -1948,17 +1948,17 @@ async function cmdWeb({ port, dir, open, dev }) {
       const targetOk = looksLikeFreyaWorkspace(target);
       const empty = looksEmptyWorkspace(target);
       if (!targetOk && !empty) {
-        process.stdout.write(`Dev seed: skipped (workspace not empty and not initialized) -> ${target}\n`);
+        fs.writeSync(process.stdout.fd, `Dev seed: skipped (workspace not empty and not initialized) -> ${target}\n`);
       } else {
         seedDevWorkspace(target);
-        process.stdout.write(`Dev seed: created demo files in ${target}\n`);
+        fs.writeSync(process.stdout.fd, `Dev seed: created demo files in ${target}\n`);
       }
     } catch (e) {
-      process.stdout.write(`Dev seed failed: ${e.message || String(e)}\n`);
+      fs.writeSync(process.stdout.fd, `Dev seed failed: ${e.message || String(e)}\n`);
     }
   }
 
-  process.stdout.write(`FREYA web running at ${url}\n`);
+  fs.writeSync(process.stdout.fd, `FREYA web running at ${url}\n`);
   if (open) openBrowser(url);
 }
 
