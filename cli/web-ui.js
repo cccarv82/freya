@@ -8,6 +8,8 @@
     lastReportPath: null,
     lastText: '',
     reports: [],
+    reportTexts: {},
+    reportModes: {},
     selectedReport: null,
     lastPlan: '',
     lastApplied: null,
@@ -18,16 +20,8 @@
     chatLoaded: false
   };
 
-  function applyTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('freya.theme', theme);
-    const t = $('themeToggle');
-    if (t) t.textContent = theme === 'dark' ? 'Claro' : 'Escuro';
-  }
-
-  function toggleTheme() {
-    const t = localStorage.getItem('freya.theme') || 'dark';
-    applyTheme(t === 'dark' ? 'light' : 'dark');
+  function applyDarkTheme() {
+    document.documentElement.setAttribute('data-theme', 'dark');
   }
 
   function setPill(kind, text) {
@@ -380,9 +374,13 @@
     const def = (window.__FREYA_DEFAULT_DIR && window.__FREYA_DEFAULT_DIR !== '__FREYA_DEFAULT_DIR__')
       ? window.__FREYA_DEFAULT_DIR
       : (localStorage.getItem('freya.dir') || './freya');
-    $('dir').value = def;
-    $('sidePath').textContent = def || './freya';
-    localStorage.setItem('freya.dir', $('dir').value || './freya');
+    const dirEl = $('dir');
+    if (dirEl) {
+      dirEl.value = def;
+      localStorage.setItem('freya.dir', dirEl.value || './freya');
+    }
+    const side = $('sidePath');
+    if (side) side.textContent = def || './freya';
   }
 
   async function api(p, body) {
@@ -411,8 +409,9 @@
   }
 
   function dirOrDefault() {
-    const d = $('dir').value.trim();
-    return d || './freya';
+    const dEl = $('dir');
+    const d = dEl ? dEl.value.trim() : '';
+    return d || (localStorage.getItem('freya.dir') || './freya');
   }
 
   function fmtWhen(ms) {
@@ -491,6 +490,116 @@
       }
     } catch (e) {
       // ignore
+    }
+  }
+
+  function renderReportsPage() {
+    const grid = $('reportsGrid');
+    if (!grid) return;
+    const q = ($('reportsFilter') ? $('reportsFilter').value : '').trim().toLowerCase();
+    const list = (state.reports || []).filter((it) => {
+      if (!q) return true;
+      return (it.name + ' ' + it.kind).toLowerCase().includes(q);
+    });
+
+    grid.innerHTML = '';
+    for (const item of list) {
+      const card = document.createElement('div');
+      const mode = state.reportModes[item.relPath] || 'preview';
+      card.className = 'reportCard' + (mode === 'raw' ? ' raw' : '');
+
+      const meta = fmtWhen(item.mtimeMs);
+      card.innerHTML =
+        '<div class="reportHead">'
+        + '<div>'
+        + '<div class="reportName">' + escapeHtml(item.name) + '</div>'
+        + '<div class="reportMeta">' + escapeHtml(item.relPath) + ' • ' + escapeHtml(meta) + '</div>'
+        + '</div>'
+        + '<div class="reportHeadActions">'
+        + '<button class="btn small" data-action="toggle">' + (mode === 'raw' ? 'Preview' : 'Markdown') + '</button>'
+        + '<button class="btn small primary" data-action="save">Salvar</button>'
+        + '</div>'
+        + '</div>'
+        + '<div class="reportBody">'
+        + '<div class="reportPreview"></div>'
+        + '<textarea class="reportRaw" rows="12"></textarea>'
+        + '</div>';
+
+      const text = state.reportTexts[item.relPath] || '';
+      const preview = card.querySelector('.reportPreview');
+      if (preview) preview.innerHTML = renderMarkdown(text || '');
+      const raw = card.querySelector('.reportRaw');
+      if (raw) raw.value = text;
+
+      const toggleBtn = card.querySelector('[data-action="toggle"]');
+      if (toggleBtn) {
+        toggleBtn.onclick = () => {
+          state.reportModes[item.relPath] = (state.reportModes[item.relPath] === 'raw') ? 'preview' : 'raw';
+          renderReportsPage();
+        };
+      }
+
+      const saveBtn = card.querySelector('[data-action="save"]');
+      if (saveBtn) {
+        saveBtn.onclick = async () => {
+          try {
+            const content = (raw && typeof raw.value === 'string') ? raw.value : '';
+            setPill('run', 'salvando…');
+            await api('/api/reports/write', { dir: dirOrDefault(), relPath: item.relPath, text: content });
+            state.reportTexts[item.relPath] = content;
+            setPill('ok', 'salvo');
+            setTimeout(() => setPill('ok', 'pronto'), 800);
+            renderReportsPage();
+          } catch (e) {
+            setPill('err', 'falhou');
+          }
+        };
+      }
+
+      grid.appendChild(card);
+    }
+  }
+
+  async function refreshReportsPage() {
+    try {
+      setPill('run', 'carregando…');
+      const r = await api('/api/reports/list', { dir: dirOrDefault() });
+      state.reports = (r.reports || []);
+      state.reportTexts = {};
+      await Promise.all(state.reports.map(async (item) => {
+        try {
+          const rr = await api('/api/reports/read', { dir: dirOrDefault(), relPath: item.relPath });
+          state.reportTexts[item.relPath] = rr.text || '';
+        } catch {
+          state.reportTexts[item.relPath] = '';
+        }
+      }));
+      renderReportsPage();
+      setPill('ok', 'pronto');
+    } catch (e) {
+      setPill('err', 'falhou');
+    }
+  }
+
+  function wireRailNav() {
+    const dash = $('railDashboard');
+    const rep = $('railReports');
+    if (dash) {
+      dash.onclick = () => {
+        const isReports = document.body && document.body.dataset && document.body.dataset.page === 'reports';
+        if (isReports) {
+          window.location.href = '/';
+          return;
+        }
+        const c = document.querySelector('.centerBody');
+        if (c) c.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+    }
+    if (rep) {
+      rep.onclick = () => {
+        const isReports = document.body && document.body.dataset && document.body.dataset.page === 'reports';
+        if (!isReports) window.location.href = '/reports';
+      };
     }
   }
 
@@ -990,10 +1099,11 @@
   }
 
   // init
-  applyTheme('dark');
-  try { localStorage.setItem('freya.theme', 'dark'); } catch (err) {}
-  $('chipPort').textContent = location.host;
+  applyDarkTheme();
+  const chipPort = $('chipPort');
+  if (chipPort) chipPort.textContent = location.host;
   loadLocal();
+  wireRailNav();
 
   // Developer drawer (persist open/close)
   try {
@@ -1007,21 +1117,32 @@
     }
   } catch {}
 
+  const isReportsPage = document.body && document.body.dataset && document.body.dataset.page === 'reports';
+
   // Load persisted settings from the workspace + bootstrap (auto-init + auto-health)
   (async () => {
     let defaults = null;
     try {
       defaults = await api('/api/defaults', { dir: dirOrDefault() });
       if (defaults && defaults.workspaceDir) {
-        $('dir').value = defaults.workspaceDir;
-        $('sidePath').textContent = defaults.workspaceDir;
+        const dirEl = $('dir');
+        if (dirEl) dirEl.value = defaults.workspaceDir;
+        const side = $('sidePath');
+        if (side) side.textContent = defaults.workspaceDir;
       }
       if (defaults && defaults.settings) {
-        $('discord').value = defaults.settings.discordWebhookUrl || '';
-        $('teams').value = defaults.settings.teamsWebhookUrl || '';
+        const discord = $('discord');
+        const teams = $('teams');
+        if (discord) discord.value = defaults.settings.discordWebhookUrl || '';
+        if (teams) teams.value = defaults.settings.teamsWebhookUrl || '';
       }
     } catch (e) {
       // ignore
+    }
+
+    if (isReportsPage) {
+      await refreshReportsPage();
+      return;
     }
 
     // If workspace isn't initialized yet, auto-init (reduces clicks)
@@ -1060,12 +1181,13 @@
   window.exportObsidian = exportObsidian;
   window.rebuildIndex = rebuildIndex;
   window.renderReportsList = renderReportsList;
+  window.renderReportsPage = renderReportsPage;
+  window.refreshReportsPage = refreshReportsPage;
   window.copyOut = copyOut;
   window.copyPath = copyPath;
   window.openSelected = openSelected;
   window.downloadSelected = downloadSelected;
   window.clearOut = clearOut;
-  window.toggleTheme = toggleTheme;
   window.saveInbox = saveInbox;
   window.saveAndPlan = saveAndPlan;
   window.toggleAutoApply = toggleAutoApply;

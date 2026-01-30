@@ -881,6 +881,11 @@ function html(defaultDir) {
   return buildHtml(safeDefault, APP_VERSION);
 }
 
+function reportsHtml(defaultDir) {
+  const safeDefault = String(defaultDir || './freya').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return buildReportsHtml(safeDefault, APP_VERSION);
+}
+
 function buildHtml(safeDefault, appVersion) {
   const safeVersion = escapeHtml(appVersion || 'unknown');
   return `<!doctype html>
@@ -901,11 +906,8 @@ function buildHtml(safeDefault, appVersion) {
             <div class="railLogo">F</div>
           </div>
           <div class="railNav">
-            <button class="railBtn active" type="button" title="Dashboard" onclick="window.scrollTo({ top: 0, behavior: 'smooth' })">D</button>
-            <button class="railBtn" type="button" title="Relatórios" onclick="document.getElementById('reportsSection')?.scrollIntoView({ behavior: 'smooth' })">R</button>
-            <button class="railBtn" type="button" title="Relatórios (atalho 2)">R</button>
-            <button class="railBtn" type="button" title="Preview">P</button>
-            <button class="railBtn" type="button" title="Conversa">C</button>
+            <button class="railBtn active" id="railDashboard" type="button" title="Dashboard">D</button>
+            <button class="railBtn" id="railReports" type="button" title="Relatórios">R</button>
           </div>
           <div class="railBottom">
             <div class="railStatus" id="railStatus" title="status"></div>
@@ -920,7 +922,6 @@ function buildHtml(safeDefault, appVersion) {
                 <div class="brand">FREYA</div>
                 <div class="brandSub">Assistente de status local-first</div>
               </div>
-              <div class="statusPill"><span class="dot" id="dot"></span><span id="pill">pronto</span></div>
             </div>
             <div class="topActions">
               <span class="chip" id="chipVersion">v${safeVersion}</span>
@@ -1130,6 +1131,82 @@ function buildHtml(safeDefault, appVersion) {
 </html>`;
 }
 
+function buildReportsHtml(safeDefault, appVersion) {
+  const safeVersion = escapeHtml(appVersion || 'unknown');
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FREYA Reports</title>
+  <link rel="stylesheet" href="/app.css" />
+</head>
+<body data-page="reports">
+  <div class="app">
+    <div class="frame">
+      <div class="shell">
+
+        <aside class="rail">
+          <div class="railTop">
+            <div class="railLogo">F</div>
+          </div>
+          <div class="railNav">
+            <button class="railBtn" id="railDashboard" type="button" title="Dashboard">D</button>
+            <button class="railBtn active" id="railReports" type="button" title="Relatórios">R</button>
+          </div>
+          <div class="railBottom">
+            <div class="railStatus" id="railStatus" title="status"></div>
+          </div>
+        </aside>
+
+        <main class="center reportsPage" id="reportsPage">
+          <div class="topbar">
+            <div class="brandLine">
+              <span class="spark"></span>
+              <div class="brandStack">
+                <div class="brand">FREYA</div>
+                <div class="brandSub">Relatórios</div>
+              </div>
+            </div>
+            <div class="topActions">
+              <span class="chip" id="chipVersion">v${safeVersion}</span>
+              <span class="chip" id="chipPort">127.0.0.1:3872</span>
+            </div>
+          </div>
+
+          <div class="centerBody">
+            <input id="dir" type="hidden" />
+
+            <section class="reportsHeader">
+              <div>
+                <div class="reportsTitle">Relatórios</div>
+                <div class="reportsSubtitle">Edite e refine seus relatórios com preview em Markdown.</div>
+              </div>
+              <div class="reportsActions">
+                <button class="btn small" type="button" onclick="refreshReportsPage()">Atualizar</button>
+              </div>
+            </section>
+
+            <section class="reportsTools">
+              <input id="reportsFilter" placeholder="filtrar (ex: daily, executive, 2026-01-29)" oninput="renderReportsPage()" />
+            </section>
+
+            <section class="reportsGrid" id="reportsGrid"></section>
+          </div>
+        </main>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.__FREYA_DEFAULT_DIR = "${safeDefault}";
+  </script>
+  <script src="/app.js"></script>
+</body>
+</html>`;
+}
+
 function ensureDir(p) {
   fs.mkdirSync(p, { recursive: true });
 }
@@ -1316,6 +1393,14 @@ async function cmdWeb({ port, dir, open, dev }) {
         return;
       }
 
+      if (req.method === 'GET' && req.url === '/reports') {
+        try { res.__freyaDebug.workspaceDir = normalizeWorkspaceDir(dir || './freya'); } catch {}
+        const body = reportsHtml(dir || './freya');
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+        res.end(body);
+        return;
+      }
+
       if (req.method === 'GET' && req.url === '/app.css') {
         const css = fs.readFileSync(path.join(__dirname, 'web-ui.css'), 'utf8');
         res.writeHead(200, { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': 'no-store' });
@@ -1410,6 +1495,23 @@ async function cmdWeb({ port, dir, open, dev }) {
           const full = path.join(workspaceDir, rel);
           if (!exists(full)) return safeJson(res, 404, { error: 'Report not found' });
           return safeJson(res, 200, { relPath: rel, fullPath: full });
+        }
+
+        if (req.url === '/api/reports/write') {
+          const rel = payload.relPath;
+          const text = payload.text;
+          if (!rel) return safeJson(res, 400, { error: 'Missing relPath' });
+          if (typeof text !== 'string') return safeJson(res, 400, { error: 'Missing text' });
+          const reportsDir = path.join(workspaceDir, 'docs', 'reports');
+          const full = path.join(workspaceDir, rel);
+          const safeReportsDir = path.resolve(reportsDir);
+          const safeFull = path.resolve(full);
+          if (!safeFull.startsWith(safeReportsDir + path.sep)) {
+            return safeJson(res, 400, { error: 'Invalid report path' });
+          }
+          if (!exists(safeFull)) return safeJson(res, 404, { error: 'Report not found' });
+          fs.writeFileSync(safeFull, text, 'utf8');
+          return safeJson(res, 200, { ok: true, relPath: rel });
         }
 
         if (req.url === '/api/inbox/add') {
