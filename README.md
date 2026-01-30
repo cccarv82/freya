@@ -97,6 +97,10 @@ Você pode pedir para a FREYA executar estas tarefas diretamente no chat, ou rod
 
 Para um guia detalhado de comandos e exemplos, consulte o **[Guia do Usuário](USER_GUIDE.md)** incluído nesta pasta.
 
+## Testing PR
+
+Nota: este é um PR de teste para confirmar acesso ao GitHub CLI.
+
 ## Estrutura de Pastas
 
 *   `.agent/`: O "cérebro" da IA (Regras e Personas).
