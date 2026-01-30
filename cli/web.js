@@ -896,62 +896,93 @@ function buildHtml(safeDefault, appVersion) {
     <div class="frame">
       <div class="shell">
 
-        <!-- LEFT: Workspaces / Topics -->
-        <aside class="sidebar">
-          <div class="sideHeader">
-            <div class="logo">FREYA</div>
-            <div class="statusPill"><span class="dot" id="dot"></span><span id="pill">pronto</span></div>
+        <aside class="rail">
+          <div class="railTop">
+            <div class="railLogo">F</div>
           </div>
-
-          <div class="sidePath" id="sidePath">./freya</div>
-
-          <div class="sideGroup">
-            <div class="sideTitle">Área de trabalho</div>
-            <div class="help" style="margin-top:-4px">Selecione sua pasta <code>freya/</code> e sincronize quando precisar.</div>
-            <div class="row" style="grid-template-columns: 1fr auto">
-              <input id="dir" placeholder="./freya" />
-              <button class="btn small" onclick="pickDir()">Browse</button>
-            </div>
-            <div class="stack" style="margin-top:10px">
-              <button class="btn sideBtn" onclick="doUpdate()">Sincronizar workspace</button>
-              <button class="btn sideBtn" onclick="doMigrate()">Migrar dados</button>
-            </div>
-            <div style="height:10px"></div>
-            <div class="help"><b>Sync workspace</b>: atualiza scripts/templates/agents na pasta <code>freya</code> sem sobrescrever <code>data/</code> e <code>logs/</code>.</div>
-            <div class="help"><b>Migrate data</b>: ajusta formatos/schemaVersion quando uma versão nova exige.</div>
+          <div class="railNav">
+            <button class="railBtn active" type="button" title="Dashboard">H</button>
+            <button class="railBtn" type="button" title="Workspace">W</button>
+            <button class="railBtn" type="button" title="Relatórios">R</button>
+            <button class="railBtn" type="button" title="Preview">P</button>
+            <button class="railBtn" type="button" title="Conversa">C</button>
           </div>
-
-          <div class="sideGroup">
-            <div class="sideTitle">Relatórios rápidos</div>
-            <div class="cardsMini">
-              <button class="miniCard" type="button" onclick="runReport('status')"><span class="miniIcon">E</span><span>Executivo</span></button>
-              <button class="miniCard" type="button" onclick="runReport('sm-weekly')"><span class="miniIcon">S</span><span>SM semanal</span></button>
-              <button class="miniCard" type="button" onclick="runReport('blockers')"><span class="miniIcon warn">B</span><span>Bloqueios</span></button>
-              <button class="miniCard" type="button" onclick="runReport('daily')"><span class="miniIcon">D</span><span>Daily</span></button>
-            </div>
-            <div class="help" style="margin-top:8px">Clique para gerar e atualizar o preview/publicação.</div>
-          </div>
-
-          <div class="sideGroup">
-            <div class="sideTitle">Atalhos</div>
-            <div class="help"><span class="k">--dev</span> cria dados de exemplo para testar rápido.</div>
-            <div style="height:8px"></div>
-            <div class="help"><span class="k">--port</span> muda a porta (default 3872).</div>
+          <div class="railBottom">
+            <button class="railBtn railToggle" id="themeToggle" type="button" onclick="toggleTheme()">Claro</button>
           </div>
         </aside>
 
-        <!-- MIDDLE: Reports / Today -->
         <main class="center">
           <div class="topbar">
-            <div class="brand"><span class="spark"></span> Assistente de status local-first</div>
-            <div class="actions">
+            <div class="brandLine">
+              <span class="spark"></span>
+              <div class="brandStack">
+                <div class="brand">FREYA</div>
+                <div class="brandSub">Assistente de status local-first</div>
+              </div>
+              <div class="statusPill"><span class="dot" id="dot"></span><span id="pill">pronto</span></div>
+            </div>
+            <div class="topActions">
               <span class="chip" id="chipVersion">v${safeVersion}</span>
               <span class="chip" id="chipPort">127.0.0.1:3872</span>
-              <button class="toggle" id="themeToggle" onclick="toggleTheme()">Escuro</button>
             </div>
           </div>
 
           <div class="centerBody">
+            <section class="promptShell">
+              <div class="promptBar">
+                <div class="promptMeta">
+                  <div class="promptTitle">Prompt</div>
+                  <div id="status" class="small">pronto</div>
+                </div>
+                <textarea id="inboxText" rows="3" placeholder="Cole updates do dia (status, blockers, decisões, ideias) ou faça uma pergunta..."></textarea>
+                <div class="promptActions">
+                  <button class="btn primary" type="button" onclick="saveAndPlan()">Salvar + Processar (Agents)</button>
+                  <button class="btn" type="button" onclick="runSuggestedReports()">Rodar relatórios sugeridos</button>
+                  <button class="btn" type="button" onclick="askFreya()">Perguntar à Freya</button>
+                </div>
+                <div class="promptToggles">
+                  <label class="toggleRow">
+                    <input id="autoApply" type="checkbox" checked style="width:auto" onchange="toggleAutoApply()" />
+                    Auto-apply plan
+                  </label>
+                  <label class="toggleRow">
+                    <input id="autoRunReports" type="checkbox" style="width:auto" onchange="toggleAutoRunReports()" />
+                    Auto-run suggested reports
+                  </label>
+                </div>
+              </div>
+            </section>
+
+            <section class="utilityGrid">
+              <div class="utilityCard">
+                <div class="utilityHead">Área de trabalho</div>
+                <div class="sidePath" id="sidePath">./freya</div>
+                <div class="row" style="grid-template-columns: 1fr auto">
+                  <input id="dir" placeholder="./freya" />
+                  <button class="btn small" type="button" onclick="pickDir()">Browse</button>
+                </div>
+                <div class="stack" style="margin-top:10px">
+                  <button class="btn" type="button" onclick="doUpdate()">Sincronizar workspace</button>
+                  <button class="btn" type="button" onclick="doMigrate()">Migrar dados</button>
+                </div>
+                <div style="height:10px"></div>
+                <div class="help"><b>Sync workspace</b>: atualiza scripts/templates/agents na pasta <code>freya</code> sem sobrescrever <code>data/</code> e <code>logs/</code>.</div>
+                <div class="help"><b>Migrate data</b>: ajusta formatos/schemaVersion quando uma versão nova exige.</div>
+              </div>
+
+              <div class="utilityCard">
+                <div class="utilityHead">Relatórios rápidos</div>
+                <div class="cardsMini">
+                  <button class="miniCard" type="button" onclick="runReport('status')"><span class="miniIcon">E</span><span>Executivo</span></button>
+                  <button class="miniCard" type="button" onclick="runReport('sm-weekly')"><span class="miniIcon">S</span><span>SM semanal</span></button>
+                  <button class="miniCard" type="button" onclick="runReport('blockers')"><span class="miniIcon warn">B</span><span>Bloqueios</span></button>
+                  <button class="miniCard" type="button" onclick="runReport('daily')"><span class="miniIcon">D</span><span>Daily</span></button>
+                </div>
+                <div class="help" style="margin-top:8px">Clique para gerar e atualizar o preview/publicação.</div>
+              </div>
+            </section>
+
             <div class="centerHead">
               <div>
                 <h1 style="margin:0">Seu dia em um painel</h1>
@@ -967,7 +998,7 @@ function buildHtml(safeDefault, appVersion) {
                 <div class="panelHead">
                   <b>Hoje</b>
                   <div class="stack">
-                    <button class="btn small" onclick="refreshToday()">Atualizar</button>
+                    <button class="btn small" type="button" onclick="refreshToday()">Atualizar</button>
                   </div>
                 </div>
                 <div class="panelBody panelScroll">
@@ -983,7 +1014,7 @@ function buildHtml(safeDefault, appVersion) {
                 <div class="panelHead">
                   <b>Relatórios</b>
                   <div class="stack">
-                    <button class="btn small" onclick="refreshReports()">Atualizar</button>
+                    <button class="btn small" type="button" onclick="refreshReports()">Atualizar</button>
                   </div>
                 </div>
                 <div class="panelBody panelScroll">
@@ -997,12 +1028,12 @@ function buildHtml(safeDefault, appVersion) {
                 <div class="panelHead">
                   <b>Preview</b>
                   <div class="stack">
-                    <button class="btn small" onclick="copyOut()">Copy</button>
-                    <button class="btn small" onclick="applyPlan()">Apply plan</button>
-                    <button class="btn small" onclick="copyPath()">Copy path</button>
-                    <button class="btn small" onclick="openSelected()">Open file</button>
-                    <button class="btn small" onclick="downloadSelected()">Download .md</button>
-                    <button class="btn small" onclick="clearOut()">Clear</button>
+                    <button class="btn small" type="button" onclick="copyOut()">Copy</button>
+                    <button class="btn small" type="button" onclick="applyPlan()">Apply plan</button>
+                    <button class="btn small" type="button" onclick="copyPath()">Copy path</button>
+                    <button class="btn small" type="button" onclick="openSelected()">Open file</button>
+                    <button class="btn small" type="button" onclick="downloadSelected()">Download .md</button>
+                    <button class="btn small" type="button" onclick="clearOut()">Clear</button>
                   </div>
                 </div>
                 <div class="panelBody">
@@ -1034,9 +1065,9 @@ function buildHtml(safeDefault, appVersion) {
                       </label>
 
                       <div class="stack">
-                        <button class="btn" onclick="saveSettings()">Salvar configurações</button>
-                        <button class="btn" onclick="publish('discord')">Publicar selecionado → Discord</button>
-                        <button class="btn" onclick="publish('teams')">Publicar selecionado → Teams</button>
+                        <button class="btn" type="button" onclick="saveSettings()">Salvar configurações</button>
+                        <button class="btn" type="button" onclick="publish('discord')">Publicar selecionado → Discord</button>
+                        <button class="btn" type="button" onclick="publish('teams')">Publicar selecionado → Teams</button>
                       </div>
                     </div>
                   </div>
@@ -1045,12 +1076,12 @@ function buildHtml(safeDefault, appVersion) {
                     <div class="panelHead"><b>Slugs & Export</b></div>
                     <div class="panelBody">
                       <label>Regras de slug do projeto</label>
-                      <textarea id="slugRules" rows="8" placeholder="{ \"rules\": [ { \"contains\": \"fideliza\", \"slug\": \"vivo/fidelizacao\" } ] }" style="width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--line); background: rgba(255,255,255,.72); color: var(--text); outline:none; resize: vertical; font-family: var(--mono);"></textarea>
+                      <textarea id="slugRules" rows="8" placeholder="{ \"rules\": [ { \"contains\": \"fideliza\", \"slug\": \"vivo/fidelizacao\" } ] }"></textarea>
                       <div class="help">Regras usadas pra inferir <code>projectSlug</code>. Formato JSON (objeto com <code>rules</code>).</div>
                       <div class="stack" style="margin-top:10px">
-                        <button class="btn" onclick="reloadSlugRules()">Recarregar regras</button>
-                        <button class="btn" onclick="saveSlugRules()">Salvar regras</button>
-                        <button class="btn" onclick="exportObsidian()">Exportar notas (Obsidian)</button>
+                        <button class="btn" type="button" onclick="reloadSlugRules()">Recarregar regras</button>
+                        <button class="btn" type="button" onclick="saveSlugRules()">Salvar regras</button>
+                        <button class="btn" type="button" onclick="exportObsidian()">Exportar notas (Obsidian)</button>
                       </div>
                     </div>
                   </div>
@@ -1061,7 +1092,7 @@ function buildHtml(safeDefault, appVersion) {
                       <div class="help">Logs ficam em <code>logs/</code> e debug traces em <code>.debuglogs/</code> dentro da workspace.</div>
                       <div class="help">Use <b>Open file</b> / <b>Copy path</b> no Preview para abrir/compartilhar o relatório selecionado.</div>
                       <div class="stack" style="margin-top:10px">
-                        <button class="btn" onclick="rebuildIndex()">Rebuild search index</button>
+                        <button class="btn" type="button" onclick="rebuildIndex()">Rebuild search index</button>
                       </div>
                     </div>
                   </div>
@@ -1071,7 +1102,6 @@ function buildHtml(safeDefault, appVersion) {
           </div>
         </main>
 
-        <!-- RIGHT: Chat -->
         <aside class="chatPane">
           <div class="chatHead">
             <div>
@@ -1084,32 +1114,6 @@ function buildHtml(safeDefault, appVersion) {
             <div class="bubble assistant">
               <div class="bubbleMeta">FREYA</div>
               <div class="bubbleBody">Cole seus updates (status, blockers, decisões, ideias) e clique em <b>Save + Process</b>.</div>
-            </div>
-          </div>
-
-          <div class="chatComposer">
-            <textarea id="inboxText" rows="5" placeholder="Cole aqui updates do dia (status, blockers, decisões, ideias)…"></textarea>
-
-            <div class="composerActions">
-              <button class="btn primary" type="button" onclick="saveAndPlan()">Salvar + Processar (Agents)</button>
-              <button class="btn" type="button" onclick="runSuggestedReports()">Rodar relatórios sugeridos</button>
-              <button class="btn" type="button" onclick="exportChatObsidian()">Exportar conversa (Obsidian)</button>
-              <button class="btn" type="button" onclick="askFreya()">Perguntar à Freya</button>
-            </div>
-
-            <div class="composerToggles">
-              <label class="toggleRow">
-                <input id="autoApply" type="checkbox" checked style="width:auto" onchange="toggleAutoApply()" />
-                Auto-apply plan
-              </label>
-              <label class="toggleRow">
-                <input id="autoRunReports" type="checkbox" style="width:auto" onchange="toggleAutoRunReports()" />
-                Auto-run suggested reports
-              </label>
-            </div>
-
-            <div class="statusFooter">
-              <span id="status" class="small">pronto</span>
             </div>
           </div>
         </aside>

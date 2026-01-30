@@ -26,7 +26,7 @@
   }
 
   function toggleTheme() {
-    const t = localStorage.getItem('freya.theme') || 'light';
+    const t = localStorage.getItem('freya.theme') || 'dark';
     applyTheme(t === 'dark' ? 'light' : 'dark');
   }
 
@@ -988,7 +988,7 @@
   }
 
   // init
-  applyTheme(localStorage.getItem('freya.theme') || 'light');
+  applyTheme(localStorage.getItem('freya.theme') || 'dark');
   $('chipPort').textContent = location.host;
   loadLocal();
 
