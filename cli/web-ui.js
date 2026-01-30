@@ -735,6 +735,19 @@
     }
   }
 
+  async function rebuildIndex() {
+    try {
+      setPill('run', 'indexing…');
+      const r = await api('/api/index/rebuild', { dir: dirOrDefault() });
+      setOut('## Index rebuild\n\n' + (r.output || 'ok'));
+      setPill('ok', 'indexed');
+      setTimeout(() => setPill('ok', 'pronto'), 800);
+    } catch (e) {
+      setPill('err', 'index failed');
+      setOut(String(e && e.message ? e.message : e));
+    }
+  }
+
   async function reloadSlugRules() {
     try {
       const r = await api('/api/project-slug-map/get', { dir: dirOrDefault() });
@@ -1042,6 +1055,7 @@
   window.reloadSlugRules = reloadSlugRules;
   window.saveSlugRules = saveSlugRules;
   window.exportObsidian = exportObsidian;
+  window.rebuildIndex = rebuildIndex;
   window.renderReportsList = renderReportsList;
   window.copyOut = copyOut;
   window.copyPath = copyPath;
