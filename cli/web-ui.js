@@ -169,7 +169,7 @@
     try {
       await navigator.clipboard.writeText(state.lastText || '');
       setPill('ok', 'copied');
-      setTimeout(() => setPill('ok', 'idle'), 800);
+      setTimeout(() => setPill('ok', 'pronto'), 800);
     } catch (e) {
       setPill('err', 'copy failed');
     }
@@ -184,7 +184,7 @@
       const r = await api('/api/reports/resolve', { dir: dirOrDefault(), relPath: state.selectedReport.relPath });
       await navigator.clipboard.writeText(r.fullPath || '');
       setPill('ok', 'path copied');
-      setTimeout(() => setPill('ok', 'idle'), 800);
+      setTimeout(() => setPill('ok', 'pronto'), 800);
     } catch {
       setPill('err', 'copy path failed');
     }
@@ -199,7 +199,7 @@
       setPill('run', 'opening…');
       await api('/api/reports/open', { dir: dirOrDefault(), relPath: state.selectedReport.relPath });
       setPill('ok', 'opened');
-      setTimeout(() => setPill('ok', 'idle'), 800);
+      setTimeout(() => setPill('ok', 'pronto'), 800);
     } catch {
       setPill('err', 'open failed');
     }
@@ -221,7 +221,7 @@
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       setPill('ok', 'downloaded');
-      setTimeout(() => setPill('ok', 'idle'), 800);
+      setTimeout(() => setPill('ok', 'pronto'), 800);
     } catch {
       setPill('err', 'download failed');
     }
@@ -389,7 +389,7 @@
       await api('/api/tasks/update', { dir: dirOrDefault(), id: t.id, patch: { projectSlug: slug, category: cat } });
       await refreshToday();
       setPill('ok', 'updated');
-      setTimeout(() => setPill('ok', 'idle'), 800);
+      setTimeout(() => setPill('ok', 'pronto'), 800);
     } catch (e) {
       setPill('err', 'update failed');
       setOut(String(e && e.message ? e.message : e));
@@ -406,7 +406,7 @@
       await api('/api/blockers/update', { dir: dirOrDefault(), id: b.id, patch: { projectSlug: slug } });
       await refreshToday();
       setPill('ok', 'updated');
-      setTimeout(() => setPill('ok', 'idle'), 800);
+      setTimeout(() => setPill('ok', 'pronto'), 800);
     } catch (e) {
       setPill('err', 'update failed');
       setOut(String(e && e.message ? e.message : e));
@@ -427,8 +427,8 @@
         + (t.projectSlug ? (' · <span style="font-family:var(--mono); opacity:.9">[' + escapeHtml(String(t.projectSlug)) + ']</span>') : '')
         + (pri ? (' · ' + escapeHtml(pri)) : '') + '</div></div>'
         + '<div style="display:flex; gap:8px">'
-        + '<button class="btn small" type="button">Complete</button>'
-        + '<button class="btn small" type="button">Edit</button>'
+        + '<button class="btn small" type="button">Concluir</button>'
+        + '<button class="btn small" type="button">Editar</button>'
         + '</div>'
         + '</div>';
       const btns = row.querySelectorAll('button');
@@ -440,7 +440,7 @@
           await api('/api/tasks/complete', { dir: dirOrDefault(), id: t.id });
           await refreshToday();
           setPill('ok', 'completed');
-          setTimeout(() => setPill('ok', 'idle'), 800);
+          setTimeout(() => setPill('ok', 'pronto'), 800);
         } catch (e) {
           setPill('err', 'complete failed');
           setOut(String(e && e.message ? e.message : e));
@@ -451,7 +451,7 @@
     if (!el.childElementCount) {
       const empty = document.createElement('div');
       empty.className = 'help';
-      empty.textContent = 'No DO_NOW tasks.';
+      empty.textContent = 'Nenhuma tarefa em Fazer agora.';
       el.appendChild(empty);
     }
   }
@@ -472,7 +472,7 @@
         + '</div>'
         + '<div style="display:flex; gap:8px; align-items:center">'
         + '<div style="opacity:.7; font-size:11px; white-space:nowrap">' + escapeHtml(fmtWhen(new Date(b.createdAt || Date.now()).getTime())) + '</div>'
-        + '<button class="btn small" type="button">Edit</button>'
+        + '<button class="btn small" type="button">Editar</button>'
         + '</div>'
         + '</div>';
       const ebtn = row.querySelector('button');
@@ -482,7 +482,7 @@
     if (!el.childElementCount) {
       const empty = document.createElement('div');
       empty.className = 'help';
-      empty.textContent = 'No OPEN blockers.';
+      empty.textContent = 'Nenhum bloqueio aberto.';
       el.appendChild(empty);
     }
   }
@@ -611,7 +611,7 @@
       const r = await api('/api/obsidian/export', { dir: dirOrDefault() });
       setOut('## Obsidian export\n\n' + (r.output || 'ok'));
       setPill('ok', 'exported');
-      setTimeout(() => setPill('ok', 'idle'), 800);
+      setTimeout(() => setPill('ok', 'pronto'), 800);
     } catch (e) {
       setPill('err', 'export failed');
       setOut(String(e && e.message ? e.message : e));
@@ -624,7 +624,7 @@
       const el = $('slugRules');
       if (el) el.value = JSON.stringify(r.map || { rules: [] }, null, 2);
       setPill('ok', 'rules loaded');
-      setTimeout(() => setPill('ok', 'idle'), 800);
+      setTimeout(() => setPill('ok', 'pronto'), 800);
     } catch (e) {
       setPill('err', 'rules load failed');
       setOut(String(e && e.message ? e.message : e));
@@ -644,7 +644,7 @@
       const r = await api('/api/project-slug-map/save', { dir: dirOrDefault(), map });
       if (el) el.value = JSON.stringify(r.map || map, null, 2);
       setPill('ok', 'rules saved');
-      setTimeout(() => setPill('ok', 'idle'), 800);
+      setTimeout(() => setPill('ok', 'pronto'), 800);
     } catch (e) {
       setPill('err', 'rules save failed');
       setOut(String(e && e.message ? e.message : e));
@@ -663,7 +663,7 @@
         }
       });
       setPill('ok', 'saved');
-      setTimeout(() => setPill('ok', 'idle'), 800);
+      setTimeout(() => setPill('ok', 'pronto'), 800);
     } catch (e) {
       setPill('err', 'save failed');
     }
@@ -714,7 +714,7 @@
       await api('/api/inbox/add', { dir: dirOrDefault(), text });
       ta.value = '';
       setPill('ok', 'saved');
-      setTimeout(() => setPill('ok', 'idle'), 800);
+      setTimeout(() => setPill('ok', 'pronto'), 800);
     } catch (e) {
       setPill('err', 'save failed');
     }
@@ -767,7 +767,7 @@
 
       if (r.ok === false) {
         setPill('err', 'planner off');
-        setTimeout(() => setPill('ok', 'idle'), 800);
+        setTimeout(() => setPill('ok', 'pronto'), 800);
         return;
       }
 
@@ -783,7 +783,7 @@
         setPill('ok', 'planned');
       }
 
-      setTimeout(() => setPill('ok', 'idle'), 1200);
+      setTimeout(() => setPill('ok', 'pronto'), 1200);
     } catch (e) {
       setPill('err', 'plan failed');
     }
@@ -817,7 +817,7 @@
       setOut(out);
       await refreshReports({ selectLatest: true });
       setPill('ok', 'done');
-      setTimeout(() => setPill('ok', 'idle'), 800);
+      setTimeout(() => setPill('ok', 'pronto'), 800);
     } catch (e) {
       setPill('err', 'run failed');
     }
@@ -838,13 +838,13 @@
       let msg = '## Apply result\n\n' + JSON.stringify(summary, null, 2);
       if (summary && Array.isArray(summary.reportsSuggested) && summary.reportsSuggested.length) {
         msg += '\n\n## Suggested reports\n- ' + summary.reportsSuggested.join('\n- ');
-        msg += '\n\nUse: **Run suggested reports** (sidebar)';
+        msg += '\n\nUse: **Rodar relatórios sugeridos** (barra lateral)';
       }
 
       setOut(msg);
       chatAppend('assistant', msg, { markdown: true });
       setPill('ok', 'applied');
-      setTimeout(() => setPill('ok', 'idle'), 800);
+      setTimeout(() => setPill('ok', 'pronto'), 800);
     } catch (e) {
       const msg = (e && e.message) ? e.message : String(e);
       setOut('## Apply failed\n\n' + msg);
