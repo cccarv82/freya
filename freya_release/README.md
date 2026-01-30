@@ -8,16 +8,76 @@ F.R.E.Y.A. é um sistema de agentes de IA projetado para organizar seu trabalho,
 
 *   **Ingestão Universal:** Registre updates, blockers e notas mentais em linguagem natural.
 *   **Gestão de Tarefas:** Crie, liste e conclua tarefas ("Lembre-me de fazer X", "Minhas tarefas", "Terminei X").
-*   **Oráculo:** Pergunte sobre o status de qualquer projeto ("Como está o projeto X?").
+*   **Oráculo:** Pergunte sobre o status de qualquer projeto ("Como está o projeto X?") e recupere logs diários ("O que anotei ontem?").
 *   **Career Coach:** Gere "Brag Sheets" automáticas para suas avaliações de desempenho.
-*   **Relatórios Automatizados:** Gere resumos semanais ou dailies instantâneos.
+*   **Relatórios Automatizados:** Gere resumos semanais, dailies, relatório de Scrum Master e relatórios executivos.
+*   **Blockers & Riscos:** Gere um relatório rápido de blockers priorizados por severidade.
 *   **Saúde do Sistema:** Valide a integridade dos seus dados locais com um comando.
 *   **Git Automation:** Gere commits inteligentes automaticamente. A Freya analisa suas mudanças e escreve a mensagem para você.
 *   **Privacidade Total:** Seus dados (JSON e Markdown) ficam 100% locais na sua máquina.
 
+## 📦 Instalação (CLI)
+
+Você pode usar a FREYA como um CLI para **inicializar uma workspace** completa (agents + scripts + data) em qualquer diretório.
+
+## 🚢 Publicação no npm (maintainers)
+
+Este repositório suporta publicação automática via GitHub Actions.
+
+### Pré-requisitos
+1) Ter permissão de publish no pacote `@cccarv82/freya` no npm.
+2) Criar o secret no GitHub: `NPM_TOKEN` (Automation token do npm com permissão de publish).
+
+### Como publicar
+1) Atualize a versão e crie uma tag `vX.Y.Z`:
+```bash
+npm version patch
+# ou minor/major
+
+git push --follow-tags
+```
+2) A Action `npm-publish` roda no push da tag e executa `npm publish --access public`.
+
+### Via npx (recomendado)
+```bash
+npx @cccarv82/freya init
+# cria ./freya
+```
+
+### Via instalação global
+```bash
+npm i -g @cccarv82/freya
+freya init
+# cria ./freya
+```
+
+### Modos do `init`
+```bash
+freya init              # cria ./freya
+freya init meu-projeto  # cria ./meu-projeto
+freya init --here       # instala no diretório atual
+```
+
+### Atualizar uma workspace existente (sem perder dados)
+Por padrão, ao rodar `init` em uma pasta existente, o CLI **preserva**:
+- `data/**`
+- `logs/**`
+
+E atualiza/instala normalmente:
+- `.agent/**`
+- `scripts/**`
+- `README.md`, `USER_GUIDE.md`
+- `package.json` (merge de scripts)
+
+Flags (use com cuidado):
+```bash
+freya init --here --force-data   # permite sobrescrever data/
+freya init --here --force-logs   # permite sobrescrever logs/
+```
+
 ## 🚀 Como Usar
 
-1.  Abra esta pasta na **sua IDE**.
+1.  Abra a pasta da workspace gerada (ex.: `./freya`) na **sua IDE**.
 2.  No chat da IDE (ex: Ctrl+L / Cmd+L), digite:
     > `@freya Ajuda`
 3.  Siga as instruções da assistente.
@@ -26,9 +86,12 @@ F.R.E.Y.A. é um sistema de agentes de IA projetado para organizar seu trabalho,
 Você pode pedir para a FREYA executar estas tarefas diretamente no chat, ou rodar via terminal:
 
 *   **Checar integridade:** "Verifique a saúde do sistema" (ou `npm run health`)
-*   **Relatório Profissional:** "Gere o status report" (ou `npm run status`)
-*   **Relatório semanal:** "Gere o relatório semanal" (ou `npm run report`)
-*   **Resumo daily:** "Gere o daily" (ou `npm run daily`)
+*   **Migrar dados (se necessário):** `npm run migrate` (adiciona `schemaVersion` em logs antigos)
+*   **Relatório Profissional (Executivo):** "Gere o status report" (ou `npm run status`)
+*   **Relatório Scrum Master (semanal):** `npm run sm-weekly`
+*   **Relatório de blockers:** `npm run blockers`
+*   **Relatório semanal (legado):** "Gere o relatório semanal" (ou `npm run report`)
+*   **Resumo daily (legado):** "Gere o daily" (ou `npm run daily`)
 
 ## 📘 Documentação Completa
 

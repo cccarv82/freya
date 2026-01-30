@@ -1,6 +1,6 @@
 {
   "name": "@cccarv82/freya",
-  "version": "1.0.53",
+  "version": "1.0.54",
   "description": "Personal AI Assistant with local-first persistence",
   "scripts": {
     "health": "node scripts/validate-data.js",
@@ -13,7 +13,7 @@
     "export-obsidian": "node scripts/export-obsidian.js",
     "build-index": "node scripts/index/build-index.js",
     "update-index": "node scripts/index/update-index.js",
-    "test": "node tests/unit/test-package-config.js && node tests/unit/test-cli-init.js && node tests/unit/test-cli-web-help.js && node tests/unit/test-web-static-assets.js && node tests/unit/test-fs-utils.js && node tests/unit/test-search-utils.js && node tests/unit/test-index-utils.js && node tests/unit/test-task-schema.js && node tests/unit/test-daily-generation.js && node tests/unit/test-report-generation.js && node tests/unit/test-oracle-retrieval.js && node tests/unit/test-task-completion.js && node tests/unit/test-migrate-data.js && node tests/unit/test-blockers-validation.js && node tests/unit/test-blockers-report.js && node tests/unit/test-sm-weekly-report.js && node tests/integration/test-ingestor-task.js"
+    "test": "node tests/unit/test-package-config.js && node tests/unit/test-cli-init.js && node tests/unit/test-cli-web-help.js && node tests/unit/test-web-static-assets.js && node tests/unit/test-fs-utils.js && node tests/unit/test-search-utils.js && node tests/unit/test-index-utils.js && node tests/unit/test-task-schema.js && node tests/unit/test-daily-generation.js && node tests/unit/test-report-generation.js && node tests/unit/test-executive-report-logs.js && node tests/unit/test-oracle-retrieval.js && node tests/unit/test-task-completion.js && node tests/unit/test-migrate-data.js && node tests/unit/test-blockers-validation.js && node tests/unit/test-blockers-report.js && node tests/unit/test-sm-weekly-report.js && node tests/integration/test-ingestor-task.js"
   },
   "keywords": [],
   "author": "",

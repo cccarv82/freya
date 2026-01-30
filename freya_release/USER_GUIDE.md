@@ -5,6 +5,39 @@ Este sistema foi projetado para ser seu assistente pessoal de produtividade, ope
 
 ## 🚀 Como Iniciar
 
+### 1) Criar uma workspace (CLI)
+Você pode inicializar uma workspace completa (agents + scripts + data) em qualquer diretório.
+
+**Via npx (recomendado):**
+```bash
+npx @cccarv82/freya init
+# cria ./freya
+```
+
+**Via instalação global:**
+```bash
+npm i -g @cccarv82/freya
+freya init
+# cria ./freya
+```
+
+**Modos do init:**
+```bash
+freya init              # cria ./freya
+freya init meu-projeto  # cria ./meu-projeto
+freya init --here       # instala no diretório atual
+```
+
+**Upgrade sem perder dados (recomendado):**
+Ao rodar `init` em uma pasta já existente, o CLI **preserva automaticamente** `data/**` e `logs/**` (se não estiverem vazios) e atualiza o restante.
+
+Se você quiser sobrescrever explicitamente:
+```bash
+freya init --here --force-data
+freya init --here --force-logs
+```
+
+### 2) Interagir no chat da IDE
 Para interagir com a assistente, basta chamá-la no chat da sua IDE:
 
 > `@freya [sua mensagem]`
@@ -38,6 +71,10 @@ Recupere o contexto de qualquer projeto instantaneamente.
 *   **Status Rápido:**
     > "Como está o projeto Vivo 5G?"
     *   *Resultado:* Resumo executivo do status atual e das últimas 3 atualizações.
+
+*   **Consulta de Logs Diários:**
+    > "O que anotei ontem?"
+    *   *Resultado:* Retorna um trecho do log diário em `logs/daily/YYYY-MM-DD.md` (ou direciona para busca quando a data não estiver clara).
 
 *   **Anti-Alucinação:**
     A FREYA sempre citará a fonte da informação (ex: `(Source: data/Clients/vivo/5g/status.json)`). Se ela não souber, ela dirá explicitamente.
@@ -78,10 +115,20 @@ Organize seu dia-a-dia com um sistema de tarefas integrado.
 ### 6. Relatórios Automatizados
 Transforme seus logs em relatórios úteis sem esforço. Peça à FREYA no chat e ela executará os scripts para você.
 
-*   **Relatório de Status Profissional (Novo):**
+*   **Relatório de Status Profissional (Executivo):**
     > "Gerar status report", "Relatório Executivo"
-    *   *Resultado:* Gera um relatório Markdown completo com Resumo Executivo, Entregas, Status de Projetos e Bloqueios. Ideal para enviar stakeholders.
+    *   *Resultado:* Gera um relatório Markdown completo com Resumo Executivo, Contexto dos Logs Diários, Entregas, Status de Projetos e Bloqueios. Ideal para enviar stakeholders.
     *   *Manual:* `npm run status -- --period [daily|weekly]`
+
+*   **Relatório Scrum Master (Semanal):**
+    > "Gerar relatório SM" ou "Relatório Scrum Master"
+    *   *Resultado:* Gera um report semanal focado em resumo, wins, blockers/riscos e foco da próxima semana.
+    *   *Manual:* `npm run sm-weekly`
+
+*   **Relatório de Blockers (priorizado por severidade):**
+    > "Gerar relatório de blockers"
+    *   *Resultado:* Lista blockers abertos ordenados por severidade e idade, pra ficar fácil priorizar.
+    *   *Manual:* `npm run blockers`
 
 *   **Relatório Semanal (Legado):**
     > "Gerar relatório semanal"
@@ -93,7 +140,15 @@ Transforme seus logs em relatórios úteis sem esforço. Peça à FREYA no chat 
     *   *Resultado:* A FREYA gera e exibe o texto "Ontem / Hoje / Bloqueios" diretamente no chat.
     *   *Manual:* `npm run daily`
 
-### 7. Saúde do Sistema
+### 7. Migração de Dados (schemaVersion)
+Se você atualizou a FREYA e tem logs antigos, rode a migração para padronizar os JSONs.
+
+*   **Migrar dados:**
+    > `npm run migrate`
+    *   *Resultado:* adiciona `schemaVersion` aos arquivos conhecidos (`task-log.json`, `career-log.json`, `blocker-log.json`).
+    *   *Segurança:* se algum JSON estiver corrompido, ele é movido para quarentena (não é perdido).
+
+### 8. Saúde do Sistema
 Garanta que seus dados locais estão íntegros.
 
 *   **Health Check:**
@@ -101,7 +156,7 @@ Garanta que seus dados locais estão íntegros.
     *   *Resultado:* A FREYA roda o diagnóstico e reporta se todos os JSONs estão válidos ou se há erros para corrigir.
     *   *Manual:* `npm run health`
 
-### 8. Git Automation
+### 9. Git Automation
 Deixe a Freya cuidar do versionamento básico do seu código.
 
 *   **Auto-Commit:**
@@ -109,7 +164,7 @@ Deixe a Freya cuidar do versionamento básico do seu código.
     *   *Resultado:* A Freya executa `git status`, analisa o `git diff` para entender o que mudou, gera uma mensagem de commit semântica e realiza o commit (`git add .` + `git commit`).
     *   *Nota:* Ela sempre pedirá confirmação ou avisará se não houver mudanças.
 
-### 9. Detecção Implícita de Tarefas
+### 10. Detecção Implícita de Tarefas
 A Freya agora entende suas intenções futuras sem precisar de comandos explícitos.
 
 *   **Detecção Inteligente:**

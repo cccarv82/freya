@@ -8,7 +8,7 @@ F.R.E.Y.A. é um sistema de agentes de IA projetado para organizar seu trabalho,
 
 *   **Ingestão Universal:** Registre updates, blockers e notas mentais em linguagem natural.
 *   **Gestão de Tarefas:** Crie, liste e conclua tarefas ("Lembre-me de fazer X", "Minhas tarefas", "Terminei X").
-*   **Oráculo:** Pergunte sobre o status de qualquer projeto ("Como está o projeto X?").
+*   **Oráculo:** Pergunte sobre o status de qualquer projeto ("Como está o projeto X?") e recupere logs diários ("O que anotei ontem?").
 *   **Career Coach:** Gere "Brag Sheets" automáticas para suas avaliações de desempenho.
 *   **Relatórios Automatizados:** Gere resumos semanais, dailies, relatório de Scrum Master e relatórios executivos.
 *   **Blockers & Riscos:** Gere um relatório rápido de blockers priorizados por severidade.

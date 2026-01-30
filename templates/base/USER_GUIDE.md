@@ -5,6 +5,39 @@ Este sistema foi projetado para ser seu assistente pessoal de produtividade, ope
 
 ## 🚀 Como Iniciar
 
+### 1) Criar uma workspace (CLI)
+Você pode inicializar uma workspace completa (agents + scripts + data) em qualquer diretório.
+
+**Via npx (recomendado):**
+```bash
+npx @cccarv82/freya init
+# cria ./freya
+```
+
+**Via instalação global:**
+```bash
+npm i -g @cccarv82/freya
+freya init
+# cria ./freya
+```
+
+**Modos do init:**
+```bash
+freya init              # cria ./freya
+freya init meu-projeto  # cria ./meu-projeto
+freya init --here       # instala no diretório atual
+```
+
+**Upgrade sem perder dados (recomendado):**
+Ao rodar `init` em uma pasta já existente, o CLI **preserva automaticamente** `data/**` e `logs/**` (se não estiverem vazios) e atualiza o restante.
+
+Se você quiser sobrescrever explicitamente:
+```bash
+freya init --here --force-data
+freya init --here --force-logs
+```
+
+### 2) Interagir no chat da IDE
 Para interagir com a assistente, basta chamá-la no chat da sua IDE:
 
 > `@freya [sua mensagem]`
@@ -38,6 +71,10 @@ Recupere o contexto de qualquer projeto instantaneamente.
 *   **Status Rápido:**
     > "Como está o projeto Vivo 5G?"
     *   *Resultado:* Resumo executivo do status atual e das últimas 3 atualizações.
+
+*   **Consulta de Logs Diários:**
+    > "O que anotei ontem?"
+    *   *Resultado:* Retorna um trecho do log diário em `logs/daily/YYYY-MM-DD.md` (ou direciona para busca quando a data não estiver clara).
 
 *   **Anti-Alucinação:**
     A FREYA sempre citará a fonte da informação (ex: `(Source: data/Clients/vivo/5g/status.json)`). Se ela não souber, ela dirá explicitamente.
@@ -80,7 +117,7 @@ Transforme seus logs em relatórios úteis sem esforço. Peça à FREYA no chat 
 
 *   **Relatório de Status Profissional (Executivo):**
     > "Gerar status report", "Relatório Executivo"
-    *   *Resultado:* Gera um relatório Markdown completo com Resumo Executivo, Entregas, Status de Projetos e Bloqueios. Ideal para enviar stakeholders.
+    *   *Resultado:* Gera um relatório Markdown completo com Resumo Executivo, Contexto dos Logs Diários, Entregas, Status de Projetos e Bloqueios. Ideal para enviar stakeholders.
     *   *Manual:* `npm run status -- --period [daily|weekly]`
 
 *   **Relatório Scrum Master (Semanal):**

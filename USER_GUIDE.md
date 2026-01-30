@@ -72,6 +72,10 @@ Recupere o contexto de qualquer projeto instantaneamente.
     > "Como está o projeto Vivo 5G?"
     *   *Resultado:* Resumo executivo do status atual e das últimas 3 atualizações.
 
+*   **Consulta de Logs Diários:**
+    > "O que anotei ontem?"
+    *   *Resultado:* Retorna um trecho do log diário em `logs/daily/YYYY-MM-DD.md` (ou direciona para busca quando a data não estiver clara).
+
 *   **Anti-Alucinação:**
     A FREYA sempre citará a fonte da informação (ex: `(Source: data/Clients/vivo/5g/status.json)`). Se ela não souber, ela dirá explicitamente.
 
@@ -113,7 +117,7 @@ Transforme seus logs em relatórios úteis sem esforço. Peça à FREYA no chat 
 
 *   **Relatório de Status Profissional (Executivo):**
     > "Gerar status report", "Relatório Executivo"
-    *   *Resultado:* Gera um relatório Markdown completo com Resumo Executivo, Entregas, Status de Projetos e Bloqueios. Ideal para enviar stakeholders.
+    *   *Resultado:* Gera um relatório Markdown completo com Resumo Executivo, Contexto dos Logs Diários, Entregas, Status de Projetos e Bloqueios. Ideal para enviar stakeholders.
     *   *Manual:* `npm run status -- --period [daily|weekly]`
 
 *   **Relatório Scrum Master (Semanal):**
