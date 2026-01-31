@@ -516,26 +516,30 @@
     el.style.height = el.scrollHeight + 'px';
   }
 
-  function downloadReportPdf(item) {
-    const text = state.reportTexts[item.relPath] || '';
-    const html = `<!doctype html><html><head><meta charset="utf-8" /><title>${escapeHtml(item.name)}</title><style>body{font-family:Arial, sans-serif; padding:32px; color:#111; line-height:1.5;} h1,h2,h3{margin:16px 0 8px;} ul{padding-left:18px;} code{font-family:monospace;} pre{background:#f5f5f5; padding:12px; border-radius:8px;}</style></head><body>${renderMarkdown(text)}</body></html>`;
-    const frame = document.createElement('iframe');
-    frame.style.position = 'fixed';
-    frame.style.right = '0';
-    frame.style.bottom = '0';
-    frame.style.width = '0';
-    frame.style.height = '0';
-    frame.style.border = '0';
-    document.body.appendChild(frame);
-    const doc = frame.contentWindow.document;
-    doc.open();
-    doc.write(html);
-    doc.close();
-    frame.onload = () => {
-      frame.contentWindow.focus();
-      frame.contentWindow.print();
-      setTimeout(() => frame.remove(), 1000);
-    };
+  async function downloadReportPdf(item) {
+    try {
+      setPill('run', 'gerando pdf…');
+      const res = await fetch('/api/reports/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dir: dirOrDefault(), relPath: item.relPath })
+      });
+      if (!res.ok) throw new Error('pdf failed');
+      const buf = await res.arrayBuffer();
+      const blob = new Blob([buf], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = (item.name || 'report').replace(/\.md$/i, '') + '.pdf';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setPill('ok', 'pdf pronto');
+      setTimeout(() => setPill('ok', 'pronto'), 800);
+    } catch (e) {
+      setPill('err', 'pdf falhou');
+    }
   }
 
   function renderReportsPage() {

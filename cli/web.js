@@ -1207,6 +1207,125 @@ function buildReportsHtml(safeDefault, appVersion) {
 </html>`;
 }
 
+async function renderReportPdf(markdown, title) {
+  const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
+  const pdfDoc = await PDFDocument.create();
+  const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const fontItalic = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
+  const fontMono = await pdfDoc.embedFont(StandardFonts.Courier);
+
+  const pageSize = [595.28, 841.89];
+  let page = pdfDoc.addPage(pageSize);
+  const { width, height } = page.getSize();
+  const margin = 48;
+  let y = height - margin;
+
+  const drawLine = (segments, size, indent = 0) => {
+    const lineHeight = size * 1.35;
+    if (y - lineHeight < margin) {
+      page = pdfDoc.addPage(pageSize);
+      y = height - margin;
+    }
+    let x = margin + indent;
+    for (const seg of segments) {
+      const font = seg.style === 'bold' ? fontBold : seg.style === 'italic' ? fontItalic : seg.style === 'mono' ? fontMono : fontRegular;
+      page.drawText(seg.text, { x, y, size, font, color: rgb(0.1, 0.1, 0.1) });
+      x += font.widthOfTextAtSize(seg.text, size);
+    }
+    y -= lineHeight;
+  };
+
+  const wrapSegments = (segments, size, indent = 0) => {
+    const maxWidth = width - margin * 2 - indent;
+    let line = [];
+    let lineWidth = 0;
+
+    const pushLine = () => {
+      if (line.length) drawLine(line, size, indent);
+      line = [];
+      lineWidth = 0;
+    };
+
+    const addToken = (token) => {
+      const font = token.style === 'bold' ? fontBold : token.style === 'italic' ? fontItalic : token.style === 'mono' ? fontMono : fontRegular;
+      const w = font.widthOfTextAtSize(token.text, size);
+      if (lineWidth + w > maxWidth && token.text.trim() !== '') {
+        pushLine();
+        if (token.text.trim() === '') return;
+      }
+      line.push(token);
+      lineWidth += w;
+    };
+
+    for (const seg of segments) {
+      const parts = seg.text.split(/(\s+)/);
+      for (const p of parts) {
+        if (p === '') continue;
+        addToken({ text: p, style: seg.style });
+      }
+    }
+    pushLine();
+  };
+
+  const parseInline = (text) => {
+    const chunks = [];
+    const pattern = /(\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_)/g;
+    let last = 0;
+    const str = String(text || '');
+    let m;
+    while ((m = pattern.exec(str)) !== null) {
+      if (m.index > last) chunks.push({ text: str.slice(last, m.index), style: 'normal' });
+      const token = m[0];
+      if (token.startsWith('**') || token.startsWith('__')) chunks.push({ text: token.slice(2, -2), style: 'bold' });
+      else chunks.push({ text: token.slice(1, -1), style: 'italic' });
+      last = m.index + token.length;
+    }
+    if (last < str.length) chunks.push({ text: str.slice(last), style: 'normal' });
+    return chunks;
+  };
+
+  const lines = String(markdown || '').split(/\r?\n/);
+  let inCode = false;
+  for (const rawLine of lines) {
+    const line = String(rawLine || '');
+    if (line.trim().startsWith('```')) {
+      inCode = !inCode;
+      continue;
+    }
+
+    if (inCode) {
+      wrapSegments([{ text: line, style: 'mono' }], 10);
+      continue;
+    }
+
+    if (line.trim() === '') {
+      y -= 8;
+      continue;
+    }
+
+    const h = line.match(/^(#{1,3})\s+(.*)$/);
+    if (h) {
+      const lvl = h[1].length;
+      const size = lvl === 1 ? 18 : lvl === 2 ? 15 : 13;
+      const segs = parseInline(h[2]).map((s) => ({ text: s.text, style: 'bold' }));
+      wrapSegments(segs, size);
+      continue;
+    }
+
+    const li = line.match(/^[ \t]*[-*]\s+(.*)$/);
+    if (li) {
+      const segs = [{ text: '• ', style: 'normal' }, ...parseInline(li[1])];
+      wrapSegments(segs, 11, 12);
+      continue;
+    }
+
+    wrapSegments(parseInline(line), 11);
+  }
+
+  return await pdfDoc.save();
+}
+
 function ensureDir(p) {
   fs.mkdirSync(p, { recursive: true });
 }
@@ -1495,6 +1614,30 @@ async function cmdWeb({ port, dir, open, dev }) {
           const full = path.join(workspaceDir, rel);
           if (!exists(full)) return safeJson(res, 404, { error: 'Report not found' });
           return safeJson(res, 200, { relPath: rel, fullPath: full });
+        }
+
+        if (req.url === '/api/reports/pdf') {
+          const rel = payload.relPath;
+          if (!rel) return safeJson(res, 400, { error: 'Missing relPath' });
+          const full = path.join(workspaceDir, rel);
+          if (!exists(full)) return safeJson(res, 404, { error: 'Report not found' });
+
+          const reportsDir = path.join(workspaceDir, 'docs', 'reports');
+          const safeReportsDir = path.resolve(reportsDir);
+          const safeFull = path.resolve(full);
+          if (!safeFull.startsWith(safeReportsDir + path.sep)) {
+            return safeJson(res, 400, { error: 'Invalid report path' });
+          }
+
+          const text = fs.readFileSync(safeFull, 'utf8');
+          const pdfBytes = await renderReportPdf(text, path.basename(rel));
+          res.writeHead(200, {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="${path.basename(rel).replace(/\.md$/i, '')}.pdf"`,
+            'Cache-Control': 'no-store'
+          });
+          res.end(Buffer.from(pdfBytes));
+          return;
         }
 
         if (req.url === '/api/reports/write') {

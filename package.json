@@ -28,5 +28,8 @@
     "templates",
     ".agent"
   ],
-  "preferGlobal": true
+  "preferGlobal": true,
+  "dependencies": {
+    "pdf-lib": "^1.17.1"
+  }
 }
