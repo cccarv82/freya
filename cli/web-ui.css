@@ -356,9 +356,6 @@ body {
 .reportPreview strong { font-weight: 700; }
 .reportPreview em { font-style: italic; }
 
-.reportRaw { display: none; width: 100%; overflow: hidden; resize: none; }
-.reportCard.raw .reportPreview { display: none; }
-.reportCard.raw .reportRaw { display: block; }
 .centerHead { display: flex; justify-content: space-between; align-items: flex-end; gap: 18px; margin-bottom: 14px; }
 .statusLine { display:flex; align-items:center; justify-content:flex-end; gap: 12px; }
 

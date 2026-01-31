@@ -555,7 +555,7 @@
     for (const item of list) {
       const card = document.createElement('div');
       const mode = state.reportModes[item.relPath] || 'preview';
-      const expanded = (state.reportExpanded && state.reportExpanded[item.relPath]) || mode === 'raw';
+      const expanded = state.reportExpanded && state.reportExpanded[item.relPath];
       card.className = 'reportCard' + (mode === 'raw' ? ' raw' : '') + (expanded ? ' expanded' : '');
 
       const meta = fmtWhen(item.mtimeMs);
@@ -569,30 +569,16 @@
         + '</div>'
         + '</div>'
         + '<div class="reportHeadActions">'
-        + '<button class="btn small" data-action="toggle">' + (mode === 'raw' ? 'Preview' : 'Markdown') + '</button>'
         + '<button class="btn small primary" data-action="save">Salvar</button>'
         + '</div>'
         + '</div>'
         + '<div class="reportBody">'
         + '<div class="reportPreview" contenteditable="true"></div>'
-        + '<textarea class="reportRaw" rows="6"></textarea>'
         + '</div>';
 
       const text = state.reportTexts[item.relPath] || '';
       const preview = card.querySelector('.reportPreview');
       if (preview) preview.innerHTML = renderMarkdown(text || '');
-      const raw = card.querySelector('.reportRaw');
-      if (raw) {
-        raw.value = text;
-        autoGrowTextarea(raw);
-        raw.addEventListener('input', () => {
-          state.reportTexts[item.relPath] = raw.value;
-          autoGrowTextarea(raw);
-          if (state.reportModes[item.relPath] !== 'raw' && preview && !preview.dataset.editing) {
-            preview.innerHTML = renderMarkdown(raw.value);
-          }
-        });
-      }
 
       if (preview) {
         preview.addEventListener('focus', () => {
@@ -603,22 +589,8 @@
           preview.dataset.editing = '';
           const val = preview.innerText || '';
           state.reportTexts[item.relPath] = val;
-          if (raw) {
-            raw.value = val;
-            autoGrowTextarea(raw);
-          }
           preview.innerHTML = renderMarkdown(val);
         });
-      }
-
-      const toggleBtn = card.querySelector('[data-action="toggle"]');
-      if (toggleBtn) {
-        toggleBtn.onclick = (ev) => {
-          ev.stopPropagation();
-          state.reportModes[item.relPath] = (state.reportModes[item.relPath] === 'raw') ? 'preview' : 'raw';
-          state.reportExpanded[item.relPath] = true;
-          renderReportsPage();
-        };
       }
 
       const saveBtn = card.querySelector('[data-action="save"]');
