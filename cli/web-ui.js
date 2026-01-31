@@ -565,6 +565,7 @@
         + '<div class="reportName">' + escapeHtml(item.name) + '</div>'
         + '<div class="reportMeta">'
         + '<span class="reportMetaText">' + escapeHtml(item.relPath) + ' • ' + escapeHtml(meta) + '</span>'
+        + '<button class="iconBtn" data-action="copy" title="Copiar">⧉</button>'
         + '<button class="iconBtn" data-action="pdf" title="Baixar PDF">⬇</button>'
         + '</div>'
         + '</div>'
@@ -611,6 +612,30 @@
         };
       }
 
+      const copyBtn = card.querySelector('[data-action="copy"]');
+      if (copyBtn) {
+        copyBtn.onclick = async (ev) => {
+          ev.stopPropagation();
+          try {
+            const html = renderMarkdown(state.reportTexts[item.relPath] || '');
+            const text = (preview && preview.innerText) ? preview.innerText : (state.reportTexts[item.relPath] || '');
+            const blob = new Blob([`<div>${html}</div>`], { type: 'text/html' });
+            const data = [new ClipboardItem({ 'text/html': blob, 'text/plain': new Blob([text], { type: 'text/plain' }) })];
+            await navigator.clipboard.write(data);
+            setPill('ok', 'copiado');
+            setTimeout(() => setPill('ok', 'pronto'), 800);
+          } catch {
+            try {
+              await navigator.clipboard.writeText(state.reportTexts[item.relPath] || '');
+              setPill('ok', 'copiado');
+              setTimeout(() => setPill('ok', 'pronto'), 800);
+            } catch {
+              setPill('err', 'copy failed');
+            }
+          }
+        };
+      }
+
       const pdfBtn = card.querySelector('[data-action="pdf"]');
       if (pdfBtn) {
         pdfBtn.onclick = (ev) => {
@@ -628,12 +653,7 @@
         };
       }
 
-      grid.appendChild(card);
-
-      if (expanded && raw) {
-        requestAnimationFrame(() => autoGrowTextarea(raw));
-      }
-    }
+      grid.appendChild(card);    }
   }
 
   async function refreshReportsPage() {
