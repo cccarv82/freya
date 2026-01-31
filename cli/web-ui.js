@@ -657,6 +657,10 @@
       }
 
       grid.appendChild(card);
+
+      if (expanded && raw) {
+        requestAnimationFrame(() => autoGrowTextarea(raw));
+      }
     }
   }
 
