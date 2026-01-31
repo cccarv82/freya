@@ -350,6 +350,7 @@ body {
   background: rgba(0,0,0,.18);
   min-height: 120px;
   outline: none;
+  white-space: pre-wrap;
 }
 
 .reportPreview strong { font-weight: 700; }

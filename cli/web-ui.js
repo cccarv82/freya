@@ -601,7 +601,7 @@
         });
         preview.addEventListener('blur', () => {
           preview.dataset.editing = '';
-          const val = preview.textContent || '';
+          const val = preview.innerText || '';
           state.reportTexts[item.relPath] = val;
           if (raw) {
             raw.value = val;
