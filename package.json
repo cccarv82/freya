@@ -1,6 +1,6 @@
 {
   "name": "@cccarv82/freya",
-  "version": "1.0.63",
+  "version": "1.0.64",
   "description": "Personal AI Assistant with local-first persistence",
   "scripts": {
     "health": "node scripts/validate-data.js",
