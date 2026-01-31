@@ -555,7 +555,7 @@
     for (const item of list) {
       const card = document.createElement('div');
       const mode = state.reportModes[item.relPath] || 'preview';
-      const expanded = state.reportExpanded && state.reportExpanded[item.relPath];
+      const expanded = (state.reportExpanded && state.reportExpanded[item.relPath]) || mode === 'raw';
       card.className = 'reportCard' + (mode === 'raw' ? ' raw' : '') + (expanded ? ' expanded' : '');
 
       const meta = fmtWhen(item.mtimeMs);
