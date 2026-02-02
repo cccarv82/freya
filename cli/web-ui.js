@@ -700,7 +700,7 @@
     }
     if (health) {
       health.onclick = () => {
-        const isHealth = document.body && document.body.dataset && document.body.dataset.page === companion;
+        const isHealth = document.body && document.body.dataset && document.body.dataset.page === 'companion';
         if (!isHealth) window.location.href = '/companion';
       };
     }
@@ -948,7 +948,7 @@
   async function refreshHealthChecklist() {
     try {
       setPill('run', 'checklist…');
-      const r = await api('/api/companion/checklist', { dir: dirOrDefault() });
+      const r = await api('/api/health/checklist', { dir: dirOrDefault() });
       if (r && r.needsInit) {
         setOut(r.error || 'Workspace not initialized');
         setPill('plan', 'needs init');
@@ -971,7 +971,7 @@
       if (sp) sp.textContent = dirOrDefault();
       setPill('run', 'health…');
       setOut('');
-      const r = await api('/api/companion', { dir: dirOrDefault() });
+      const r = await api('/api/health', { dir: dirOrDefault() });
       if (r && r.needsInit) {
         setOut(r.error || 'Workspace not initialized');
         setLast(null);
@@ -1314,7 +1314,7 @@
   } catch {}
 
   const isReportsPage = document.body && document.body.dataset && document.body.dataset.page === 'reports';
-  const isCompanionPage = document.body && document.body.dataset && document.body.dataset.page === companion;
+  const isCompanionPage = document.body && document.body.dataset && document.body.dataset.page === 'companion';
 
   // Load persisted settings from the workspace + bootstrap (auto-init + auto-health)
   (async () => {
