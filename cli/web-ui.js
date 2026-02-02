@@ -868,7 +868,8 @@
       const r = await api('/api/pick-dir', {});
       if (r && r.dir) {
         $('dir').value = r.dir;
-        $('sidePath').textContent = r.dir;
+        const sp = $('sidePath');
+      if (sp) sp.textContent = r.dir;
       }
       saveLocal();
       setPill('ok', 'ready');
@@ -902,7 +903,8 @@
   async function doUpdate() {
     try {
       saveLocal();
-      $('sidePath').textContent = dirOrDefault();
+      const sp = $('sidePath');
+      if (sp) sp.textContent = dirOrDefault();
       setPill('run', 'update…');
       setOut('');
       const r = await api('/api/update', { dir: dirOrDefault() });
@@ -965,7 +967,8 @@
   async function doHealth() {
     try {
       saveLocal();
-      $('sidePath').textContent = dirOrDefault();
+      const sp = $('sidePath');
+      if (sp) sp.textContent = dirOrDefault();
       setPill('run', 'health…');
       setOut('');
       const r = await api('/api/health', { dir: dirOrDefault() });
@@ -990,7 +993,8 @@
   async function doMigrate() {
     try {
       saveLocal();
-      $('sidePath').textContent = dirOrDefault();
+      const sp = $('sidePath');
+      if (sp) sp.textContent = dirOrDefault();
       setPill('run', 'migrate…');
       setOut('');
       const r = await api('/api/migrate', { dir: dirOrDefault() });
@@ -1006,7 +1010,8 @@
   async function runReport(name) {
     try {
       saveLocal();
-      $('sidePath').textContent = dirOrDefault();
+      const sp = $('sidePath');
+      if (sp) sp.textContent = dirOrDefault();
       setPill('run', name + '…');
       setOut('');
       const r = await api('/api/report', { dir: dirOrDefault(), script: name });
