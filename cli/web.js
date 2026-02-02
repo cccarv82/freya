@@ -2409,6 +2409,10 @@ async function cmdWeb({ port, dir, open, dev }) {
           return safeJson(res, 200, { ok: true, task: updated });
         }
 
+        if (req.url === '/api/health/checklist') {
+          req.url = '/api/companion/checklist';
+        }
+
         if (req.url === '/api/companion/checklist') {
           if (!looksLikeFreyaWorkspace(workspaceDir)) {
             return safeJson(res, 200, { ok: false, needsInit: true, error: 'Workspace not initialized', items: [] });

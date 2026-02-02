@@ -948,7 +948,7 @@
   async function refreshHealthChecklist() {
     try {
       setPill('run', 'checklist…');
-      const r = await api('/api/health/checklist', { dir: dirOrDefault() });
+      const r = await api('/api/companion/checklist', { dir: dirOrDefault() });
       if (r && r.needsInit) {
         setOut(r.error || 'Workspace not initialized');
         setPill('plan', 'needs init');
