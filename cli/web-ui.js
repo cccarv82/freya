@@ -698,6 +698,87 @@
     }
   }
 
+  function renderTimeline() {
+    const el = $('timelineGrid');
+    if (!el) return;
+    const filter = String(($('timelineFilter') && $('timelineFilter').value) || '').toLowerCase();
+    const items = Array.isArray(state.timeline) ? state.timeline : [];
+    const filtered = items.filter((i) => {
+      const hay = [i.kind, i.title, i.content, (i.tags || []).join(' ')].join(' ').toLowerCase();
+      return !filter || hay.includes(filter);
+    });
+    el.innerHTML = '';
+    for (const it of filtered) {
+      const card = document.createElement('div');
+      card.className = 'reportCard';
+      card.innerHTML = '<div class="reportHead">'
+        + '<div><div class="reportTitle">' + escapeHtml(it.title || 'Evento') + '</div>'
+        + '<div class="reportMeta">' + escapeHtml(it.date || '') + ' · ' + escapeHtml(it.kind || '') + '</div></div>'
+        + '</div>'
+        + '<div class="help" style="margin-top:8px">' + escapeHtml(it.content || '') + '</div>';
+      el.appendChild(card);
+    }
+    if (!filtered.length) {
+      const empty = document.createElement('div');
+      empty.className = 'help';
+      empty.textContent = 'Nenhum evento encontrado.';
+      el.appendChild(empty);
+    }
+  }
+
+  async function refreshTimeline() {
+    try {
+      const r = await api('/api/timeline', { dir: dirOrDefault() });
+      state.timeline = r.items || [];
+      renderTimeline();
+    } catch (e) {
+      const el = $('timelineGrid');
+      if (el) el.textContent = 'Falha ao carregar timeline.';
+    }
+  }
+
+  async function refreshIncidents() {
+    try {
+      const r = await api('/api/incidents', { dir: dirOrDefault() });
+      const el = $('incidentsBox');
+      if (el) {
+        const md = r.markdown || '';
+        el.innerHTML = md ? renderMarkdown(md) : '<div class="help">Nenhum incidente registrado.</div>';
+      }
+    } catch {
+      const el = $('incidentsBox');
+      if (el) el.textContent = 'Falha ao carregar incidentes.';
+    }
+  }
+
+  async function refreshHeatmap() {
+    try {
+      const r = await api('/api/tasks/heatmap', { dir: dirOrDefault() });
+      const el = $('heatmapGrid');
+      if (!el) return;
+      el.innerHTML = '';
+      const items = r.items || [];
+      for (const it of items) {
+        const row = document.createElement('div');
+        row.className = 'rep';
+        row.innerHTML = '<div style="display:flex; justify-content:space-between; gap:10px; align-items:center">'
+          + '<div style="min-width:0"><div style="font-weight:800">' + escapeHtml(it.slug || 'unassigned') + '</div>'
+          + '<div class="help" style="margin-top:4px">Total: ' + escapeHtml(String(it.total)) + ' · Pendentes: ' + escapeHtml(String(it.pending)) + ' · Concluidas: ' + escapeHtml(String(it.completed)) + '</div></div>'
+          + '</div>';
+        el.appendChild(row);
+      }
+      if (!items.length) {
+        const empty = document.createElement('div');
+        empty.className = 'help';
+        empty.textContent = 'Sem dados de tasks.';
+        el.appendChild(empty);
+      }
+    } catch {
+      const el = $('heatmapGrid');
+      if (el) el.textContent = 'Falha ao carregar heatmap.';
+    }
+  }
+
   async function refreshReportsPage() {
     try {
       setPill('run', 'carregando…');
@@ -723,6 +804,7 @@
     const dash = $('railDashboard');
     const rep = $('railReports');
     const proj = $('railProjects');
+    const tl = $('railTimeline');
     const health = $('railCompanion');
     if (dash) {
       dash.onclick = () => {
@@ -745,6 +827,12 @@
       proj.onclick = () => {
         const isProjects = document.body && document.body.dataset && document.body.dataset.page === 'projects';
         if (!isProjects) window.location.href = '/projects';
+      };
+    }
+    if (tl) {
+      tl.onclick = () => {
+        const isTimeline = document.body && document.body.dataset && document.body.dataset.page === 'timeline';
+        if (!isTimeline) window.location.href = '/timeline';
       };
     }
     if (health) {
@@ -1364,6 +1452,7 @@
 
   const isReportsPage = document.body && document.body.dataset && document.body.dataset.page === 'reports';
   const isProjectsPage = document.body && document.body.dataset && document.body.dataset.page === 'projects';
+  const isTimelinePage = document.body && document.body.dataset && document.body.dataset.page === 'timeline';
   const isCompanionPage = document.body && document.body.dataset && document.body.dataset.page === 'companion';
 
   // Load persisted settings from the workspace + bootstrap (auto-init + auto-health)
@@ -1397,8 +1486,15 @@
       return;
     }
 
+    if (isTimelinePage) {
+      await refreshTimeline();
+      return;
+    }
+
     if (isCompanionPage) {
       await refreshHealthChecklist();
+      await refreshIncidents();
+      await refreshHeatmap();
       return;
     }
 
@@ -1441,6 +1537,9 @@
   window.renderReportsPage = renderReportsPage;
   window.refreshReportsPage = refreshReportsPage;
   window.refreshProjects = refreshProjects;
+  window.refreshTimeline = refreshTimeline;
+  window.refreshIncidents = refreshIncidents;
+  window.refreshHeatmap = refreshHeatmap;
   window.refreshBlockersInsights = refreshBlockersInsights;
   window.refreshHealthChecklist = refreshHealthChecklist;
   window.copyOut = copyOut;

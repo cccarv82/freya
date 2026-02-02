@@ -911,6 +911,7 @@ function buildHtml(safeDefault, appVersion) {
             <button class="railBtn" id="railReports" type="button" title="Relatórios">R</button>
             <button class="railBtn" id="railCompanion" type="button" title="Companion">C</button>
                       <button class="railBtn" id="railProjects" type="button" title="Projects">P</button>
+                      <button class="railBtn" id="railTimeline" type="button" title="Timeline">T</button>
           </div>
           <div class="railBottom">
             <div class="railStatus" id="railStatus" title="status"></div>
@@ -1162,6 +1163,7 @@ function buildReportsHtml(safeDefault, appVersion) {
             <button class="railBtn active" id="railReports" type="button" title="Relatórios">R</button>
             <button class="railBtn" id="railCompanion" type="button" title="Companion">C</button>
                       <button class="railBtn" id="railProjects" type="button" title="Projects">P</button>
+                      <button class="railBtn" id="railTimeline" type="button" title="Timeline">T</button>
           </div>
           <div class="railBottom">
             <div class="railStatus" id="railStatus" title="status"></div>
@@ -1240,6 +1242,7 @@ function buildProjectsHtml(safeDefault, appVersion) {
             <button class="railBtn" id="railReports" type="button" title="Relatorios">R</button>
             <button class="railBtn" id="railCompanion" type="button" title="Companion">C</button>
             <button class="railBtn active" id="railProjects" type="button" title="Projects">P</button>
+                      <button class="railBtn" id="railTimeline" type="button" title="Timeline">T</button>
           </div>
           <div class="railBottom">
             <div class="railStatus" id="railStatus" title="status"></div>
@@ -1294,6 +1297,85 @@ function buildProjectsHtml(safeDefault, appVersion) {
 </html>`;
 }
 
+function buildTimelineHtml(safeDefault, appVersion) {
+  const safeVersion = escapeHtml(appVersion || 'unknown');
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset=\"utf-8\" />
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+  <title>Timeline</title>
+  <link rel=\"stylesheet\" href=\"/app.css\" />
+</head>
+<body data-page=\"timeline\">
+  <div class=\"app\">
+    <div class=\"frame\">
+      <div class=\"shell\">
+
+        <aside class=\"rail\">
+          <div class=\"railTop\">
+            <div class=\"railLogo\">F</div>
+          </div>
+          <div class=\"railNav\">
+            <button class=\"railBtn\" id=\"railDashboard\" type=\"button\" title=\"Dashboard\">D</button>
+            <button class=\"railBtn\" id=\"railReports\" type=\"button\" title=\"Relatorios\">R</button>
+            <button class=\"railBtn\" id=\"railCompanion\" type=\"button\" title=\"Companion\">C</button>
+            <button class=\"railBtn\" id=\"railProjects\" type=\"button\" title=\"Projects\">P</button>
+            <button class=\"railBtn active\" id=\"railTimeline\" type=\"button\" title=\"Timeline\">T</button>
+          </div>
+          <div class=\"railBottom\">
+            <div class=\"railStatus\" id=\"railStatus\" title=\"status\"></div>
+          </div>
+        </aside>
+
+        <main class=\"center reportsPage\" id=\"timelinePage\">
+          <div class=\"topbar\">
+            <div class=\"brandLine\">
+              <span class=\"spark\"></span>
+              <div class=\"brandStack\">
+                <div class=\"brand\">FREYA</div>
+                <div class=\"brandSub\">Timeline</div>
+              </div>
+            </div>
+            <div class=\"topActions\">
+              <span class=\"chip\" id=\"chipVersion\">v${safeVersion}</span>
+              <span class=\"chip\" id=\"chipPort\">127.0.0.1:3872</span>
+            </div>
+          </div>
+
+          <div class=\"centerBody\">
+            <input id=\"dir\" type=\"hidden\" />
+
+            <section class=\"reportsHeader\">
+              <div>
+                <div class=\"reportsTitle\">Timeline</div>
+                <div class=\"reportsSubtitle\">Eventos do dia a dia, status e tarefas em ordem cronologica.</div>
+              </div>
+              <div class=\"reportsActions\">
+                <button class=\"btn small\" type=\"button\" onclick=\"refreshTimeline()\">Atualizar</button>
+              </div>
+            </section>
+
+            <section class=\"reportsTools\">
+              <input id=\"timelineFilter\" placeholder=\"filtrar (tag, projeto, tipo)\" oninput=\"renderTimeline()\" />
+            </section>
+
+            <section class=\"reportsGrid\" id=\"timelineGrid\"></section>
+          </div>
+        </main>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.__FREYA_DEFAULT_DIR = \"${safeDefault}\";
+  </script>
+  <script src=\"/app.js\"></script>
+</body>
+</html>`;
+}
+
 function buildCompanionHtml(safeDefault, appVersion) {
   const safeVersion = escapeHtml(appVersion || 'unknown');
   return `<!doctype html>
@@ -1318,6 +1400,7 @@ function buildCompanionHtml(safeDefault, appVersion) {
             <button class="railBtn" id="railReports" type="button" title="Relatórios">R</button>
             <button class="railBtn active" id="railCompanion" type="button" title="Companion">C</button>
                       <button class="railBtn" id="railProjects" type="button" title="Projects">P</button>
+                      <button class="railBtn" id="railTimeline" type="button" title="Timeline">T</button>
           </div>
           <div class="railBottom">
             <div class="railStatus" id="railStatus" title="status"></div>
@@ -1359,6 +1442,20 @@ function buildCompanionHtml(safeDefault, appVersion) {
             </section>
 
             <section class="reportsGrid" id="healthChecklist"></section>
+
+            <section class="panel" style="margin-top:16px">
+              <div class="panelHead"><b>Incident Radar</b></div>
+              <div class="panelBody">
+                <div id="incidentsBox" class="log md" style="font-family: var(--sans);"></div>
+              </div>
+            </section>
+
+            <section class="panel" style="margin-top:16px">
+              <div class="panelHead"><b>Task Heatmap</b></div>
+              <div class="panelBody">
+                <div id="heatmapGrid"></div>
+              </div>
+            </section>
 
             <section class="panel" style="margin-top:16px">
               <div class="panelHead"><b>Saida</b></div>
@@ -1710,6 +1807,14 @@ async function cmdWeb({ port, dir, open, dev }) {
         return;
       }
 
+      if (req.method === 'GET' && req.url === '/timeline') {
+        try { res.__freyaDebug.workspaceDir = normalizeWorkspaceDir(dir || './freya'); } catch {}
+        const body = timelineHtml(dir || './freya');
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+        res.end(body);
+        return;
+      }
+
       if (req.method === 'GET' && req.url === '/app.css') {
         const css = fs.readFileSync(path.join(__dirname, 'web-ui.css'), 'utf8');
         res.writeHead(200, { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': 'no-store' });
@@ -1829,6 +1934,79 @@ async function cmdWeb({ port, dir, open, dev }) {
           return safeJson(res, 200, { ok: true, projects: items });
         }
 
+if (req.url === '/api/timeline') {
+          const items = [];
+          const dailyDir = path.join(workspaceDir, 'logs', 'daily');
+          if (exists(dailyDir)) {
+            const files = fs.readdirSync(dailyDir).filter((f) => /^\d{4}-\d{2}-\d{2}\.md$/.test(f));
+            for (const f of files) {
+              const date = f.replace('.md', '');
+              const full = path.join(dailyDir, f);
+              const body = fs.readFileSync(full, 'utf8');
+              items.push({ kind: 'daily', date, title: `Daily ${date}`, content: body.slice(0, 500) });
+            }
+          }
+          const base = path.join(workspaceDir, 'data', 'Clients');
+          if (exists(base)) {
+            const stack = [base];
+            while (stack.length) {
+              const dirp = stack.pop();
+              const entries = fs.readdirSync(dirp, { withFileTypes: true });
+              for (const ent of entries) {
+                const full = path.join(dirp, ent.name);
+                if (ent.isDirectory()) stack.push(full);
+                else if (ent.isFile() && ent.name === 'status.json') {
+                  const doc = readJsonOrNull(full) || {};
+                  const slug = path.relative(base, path.dirname(full)).replace(/\\/g, '/');
+                  const hist = Array.isArray(doc.history) ? doc.history : [];
+                  for (const h of hist) {
+                    items.push({
+                      kind: 'status',
+                      date: h.date || '',
+                      title: `${doc.project || slug} (${h.type || 'Status'})`,
+                      content: h.content || '',
+                      tags: h.tags || [],
+                      slug
+                    });
+                  }
+                }
+              }
+            }
+          }
+          const taskFile = path.join(workspaceDir, 'data', 'tasks', 'task-log.json');
+          const taskDoc = readJsonOrNull(taskFile) || { tasks: [] };
+          const tasks = Array.isArray(taskDoc.tasks) ? taskDoc.tasks : [];
+          for (const t of tasks) {
+            if (t.createdAt) items.push({ kind: 'task', date: String(t.createdAt).slice(0, 10), title: `Task criada: ${t.description || t.id}`, content: t.projectSlug || '' });
+            if (t.completedAt) items.push({ kind: 'task', date: String(t.completedAt).slice(0, 10), title: `Task concluida: ${t.description || t.id}`, content: t.projectSlug || '' });
+          }
+          items.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+          return safeJson(res, 200, { ok: true, items });
+        }
+
+        if (req.url === '/api/incidents') {
+          const p = path.join(workspaceDir, 'docs', 'reports', 'fidelizacao-incident-index.md');
+          if (!exists(p)) return safeJson(res, 200, { ok: true, markdown: '' });
+          const md = fs.readFileSync(p, 'utf8');
+          return safeJson(res, 200, { ok: true, markdown: md });
+        }
+
+        if (req.url === '/api/tasks/heatmap') {
+          const file = path.join(workspaceDir, 'data', 'tasks', 'task-log.json');
+          const doc = readJsonOrNull(file) || { tasks: [] };
+          const tasks = Array.isArray(doc.tasks) ? doc.tasks : [];
+          const map = {};
+          for (const t of tasks) {
+            const slug = t.projectSlug || 'unassigned';
+            if (!map[slug]) map[slug] = { total: 0, pending: 0, completed: 0 };
+            map[slug].total++;
+            if (t.status === 'COMPLETED') map[slug].completed++; else map[slug].pending++;
+          }
+          const items = Object.entries(map).map(([slug, v]) => ({ slug, ...v }));
+          items.sort((a, b) => b.total - a.total);
+          return safeJson(res, 200, { ok: true, items });
+        }
+
 if (req.url === '/api/reports/list') {
           const reports = listReports(workspaceDir);
           return safeJson(res, 200, { reports });
@@ -1890,6 +2068,26 @@ if (req.url === '/api/reports/list') {
           if (!exists(safeFull)) return safeJson(res, 404, { error: 'Report not found' });
           fs.writeFileSync(safeFull, text, 'utf8');
           return safeJson(res, 200, { ok: true, relPath: rel });
+        }
+
+        function autoLinkNotes(textInput) {
+          try {
+            const projectsDir = path.join(workspaceDir, 'docs', 'projects');
+            if (!exists(projectsDir)) return '';
+            const files = fs.readdirSync(projectsDir).filter((f) => f.endsWith('.md'));
+            const links = [];
+            for (const f of files) {
+              const name = f.replace('.md', '');
+              const slug = name.toLowerCase();
+              if (textInput.toLowerCase().includes(slug)) links.push(`[[${name}]]`);
+            }
+            if (!links.length) return '';
+            return `
+
+Links: ${links.join(' ')}`;
+          } catch {
+            return '';
+          }
         }
 
         if (req.url === '/api/inbox/add') {
@@ -2567,7 +2765,30 @@ if (req.url === '/api/reports/list') {
           return safeJson(res, 200, { ok: true, items, stats: { pendingTasks, openBlockers, reportsToday, reportsTotal: reports.length } });
         }
 
-        if (req.url === '/api/blockers/summary') {
+        if (req.url === '/api/incidents') {
+          const p = path.join(workspaceDir, 'docs', 'reports', 'fidelizacao-incident-index.md');
+          if (!exists(p)) return safeJson(res, 200, { ok: true, markdown: '' });
+          const md = fs.readFileSync(p, 'utf8');
+          return safeJson(res, 200, { ok: true, markdown: md });
+        }
+
+        if (req.url === '/api/tasks/heatmap') {
+          const file = path.join(workspaceDir, 'data', 'tasks', 'task-log.json');
+          const doc = readJsonOrNull(file) || { tasks: [] };
+          const tasks = Array.isArray(doc.tasks) ? doc.tasks : [];
+          const map = {};
+          for (const t of tasks) {
+            const slug = t.projectSlug || 'unassigned';
+            if (!map[slug]) map[slug] = { total: 0, pending: 0, completed: 0 };
+            map[slug].total++;
+            if (t.status === 'COMPLETED') map[slug].completed++; else map[slug].pending++;
+          }
+          const items = Object.entries(map).map(([slug, v]) => ({ slug, ...v }));
+          items.sort((a, b) => b.total - a.total);
+          return safeJson(res, 200, { ok: true, items });
+        }
+
+if (req.url === '/api/blockers/summary') {
           const file = path.join(workspaceDir, 'data', 'blockers', 'blocker-log.json');
           const doc = readJsonOrNull(file) || { schemaVersion: 1, blockers: [] };
           const blockers = Array.isArray(doc.blockers) ? doc.blockers : [];
