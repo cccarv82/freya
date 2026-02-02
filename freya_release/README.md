@@ -1,8 +1,8 @@
 # F.R.E.Y.A. - Fully Responsive Enhanced Yield Assistant
 
-> **Sua Assistente de Produtividade Local-First para sua IDE.**
+> **Sua Assistente de Produtividade Local-First no navegador.**
 
-F.R.E.Y.A. é um sistema de agentes de IA projetado para organizar seu trabalho, gerenciar status de projetos, rastrear tarefas e registrar sua evolução de carreira, tudo através de uma interface de chat simples e direta.
+F.R.E.Y.A. é um sistema de agentes de IA projetado para organizar seu trabalho, gerenciar status de projetos, rastrear tarefas e registrar sua evolução de carreira, tudo através de uma interface de chat simples e direta no navegador.
 
 ## 🌟 Principais Recursos
 
@@ -16,9 +16,9 @@ F.R.E.Y.A. é um sistema de agentes de IA projetado para organizar seu trabalho,
 *   **Git Automation:** Gere commits inteligentes automaticamente. A Freya analisa suas mudanças e escreve a mensagem para você.
 *   **Privacidade Total:** Seus dados (JSON e Markdown) ficam 100% locais na sua máquina.
 
-## 📦 Instalação (CLI)
+## 📦 Instalação (Web UI)
 
-Você pode usar a FREYA como um CLI para **inicializar uma workspace** completa (agents + scripts + data) em qualquer diretório.
+A FREYA agora roda como um app web local. Basta iniciar o servidor e abrir o navegador.
 
 ## 🚢 Publicação no npm (maintainers)
 
@@ -40,50 +40,31 @@ git push --follow-tags
 
 ### Via npx (recomendado)
 ```bash
-npx @cccarv82/freya init
-# cria ./freya
+npx @cccarv82/freya
 ```
 
 ### Via instalação global
 ```bash
 npm i -g @cccarv82/freya
-freya init
-# cria ./freya
+freya
 ```
 
-### Modos do `init`
+### Opções úteis
 ```bash
-freya init              # cria ./freya
-freya init meu-projeto  # cria ./meu-projeto
-freya init --here       # instala no diretório atual
-```
-
-### Atualizar uma workspace existente (sem perder dados)
-Por padrão, ao rodar `init` em uma pasta existente, o CLI **preserva**:
-- `data/**`
-- `logs/**`
-
-E atualiza/instala normalmente:
-- `.agent/**`
-- `scripts/**`
-- `README.md`, `USER_GUIDE.md`
-- `package.json` (merge de scripts)
-
-Flags (use com cuidado):
-```bash
-freya init --here --force-data   # permite sobrescrever data/
-freya init --here --force-logs   # permite sobrescrever logs/
+freya --port 4000       # muda a porta (padrão: 3872)
+freya --dir ./freya     # define a workspace local (padrão: ./freya)
+freya --no-open         # não abre o navegador automaticamente
+freya --dev             # cria dados demo em workspace vazia
 ```
 
 ## 🚀 Como Usar
 
-1.  Abra a pasta da workspace gerada (ex.: `./freya`) na **sua IDE**.
-2.  No chat da IDE (ex: Ctrl+L / Cmd+L), digite:
-    > `@freya Ajuda`
-3.  Siga as instruções da assistente.
+1.  Inicie o servidor com `npx @cccarv82/freya` ou `freya`.
+2.  O navegador abre em `http://127.0.0.1:3872` (porta padrão).
+3.  Se a workspace não existir, a própria UI faz o **auto-init** usando apenas arquivos locais.
 
 ### Comandos Rápidos
-Você pode pedir para a FREYA executar estas tarefas diretamente no chat, ou rodar via terminal:
+Você pode pedir para a FREYA executar estas tarefas diretamente na UI, ou rodar via terminal dentro da workspace:
 
 *   **Checar integridade:** "Verifique a saúde do sistema" (ou `npm run health`)
 *   **Migrar dados (se necessário):** `npm run migrate` (adiciona `schemaVersion` em logs antigos)

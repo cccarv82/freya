@@ -1,44 +1,37 @@
 # Guia do Usuário F.R.E.Y.A. v1.0
 
 Bem-vindo à F.R.E.Y.A. (Fully Responsive Enhanced Yield Assistant).
-Este sistema foi projetado para ser seu assistente pessoal de produtividade, operando diretamente no seu ambiente de desenvolvimento (IDE), com foco total em privacidade (Local-First) e eficiência.
+Este sistema foi projetado para ser seu assistente pessoal de produtividade, operando localmente no navegador, com foco total em privacidade (Local-First) e eficiência.
 
 ## 🚀 Como Iniciar
 
-### 1) Criar uma workspace (CLI)
-Você pode inicializar uma workspace completa (agents + scripts + data) em qualquer diretório.
+### 1) Iniciar a Web UI
+Execute o servidor local e abra o navegador.
 
 **Via npx (recomendado):**
 ```bash
-npx @cccarv82/freya init
-# cria ./freya
+npx @cccarv82/freya
 ```
 
 **Via instalação global:**
 ```bash
 npm i -g @cccarv82/freya
-freya init
-# cria ./freya
+freya
 ```
 
-**Modos do init:**
+**Opcoes comuns:**
 ```bash
-freya init              # cria ./freya
-freya init meu-projeto  # cria ./meu-projeto
-freya init --here       # instala no diretório atual
+freya --port 4000
+freya --dir ./freya
+freya --no-open
+freya --dev
 ```
 
-**Upgrade sem perder dados (recomendado):**
-Ao rodar `init` em uma pasta já existente, o CLI **preserva automaticamente** `data/**` e `logs/**` (se não estiverem vazios) e atualiza o restante.
+### 2) Selecionar/Inicializar a workspace
+A primeira execucao abre a UI e, se necessario, faz o auto-init da workspace local (sem banco externo).
 
-Se você quiser sobrescrever explicitamente:
-```bash
-freya init --here --force-data
-freya init --here --force-logs
-```
-
-### 2) Interagir no chat da IDE
-Para interagir com a assistente, basta chamá-la no chat da sua IDE:
+### 3) Interagir no chat da UI
+Para interagir com a assistente, basta chamá-la no chat da UI:
 
 > `@freya [sua mensagem]`
 

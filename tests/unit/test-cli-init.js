@@ -1,9 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { spawnSync } = require('child_process');
-
-const repoRoot = path.join(__dirname, '../..');
+const { initWorkspace } = require('../../cli/init');
 
 function exists(p) {
   try { fs.accessSync(p); return true; } catch { return false; }
@@ -12,34 +10,15 @@ function exists(p) {
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'freya-cli-init-'));
 const target = path.join(tempRoot, 'workspace');
 
-try {
+async function run() {
   // 1) default creates ./freya
   const defaultCwd = path.join(tempRoot, 'default');
   fs.mkdirSync(defaultCwd, { recursive: true });
-  const resDefault = spawnSync('node', [path.join(repoRoot, 'bin/freya.js'), 'init'], {
-    cwd: defaultCwd,
-    encoding: 'utf8'
-  });
-  if (resDefault.status !== 0) {
-    console.error('❌ FAIL: freya init (default) exited non-zero');
-    if (resDefault.stdout) console.error(resDefault.stdout);
-    if (resDefault.stderr) console.error(resDefault.stderr);
-    process.exit(1);
-  }
   const defaultTarget = path.join(defaultCwd, 'freya');
+  await initWorkspace({ targetDir: defaultTarget, force: false });
 
   // 2) explicit dir
-  const res = spawnSync('node', ['bin/freya.js', 'init', target], {
-    cwd: repoRoot,
-    encoding: 'utf8'
-  });
-
-  if (res.status !== 0) {
-    console.error('❌ FAIL: freya init exited non-zero');
-    if (res.stdout) console.error(res.stdout);
-    if (res.stderr) console.error(res.stderr);
-    process.exit(1);
-  }
+  await initWorkspace({ targetDir: target, force: false });
 
   const mustExist = [
     path.join(target, '.agent', 'rules', 'freya', 'agents', 'master.mdc'),
@@ -70,16 +49,7 @@ try {
   // 3) in-place
   const inPlaceDir = path.join(tempRoot, 'inplace');
   fs.mkdirSync(inPlaceDir, { recursive: true });
-  const resHere = spawnSync('node', [path.join(repoRoot, 'bin/freya.js'), 'init', '--here'], {
-    cwd: inPlaceDir,
-    encoding: 'utf8'
-  });
-  if (resHere.status !== 0) {
-    console.error('❌ FAIL: freya init --here exited non-zero');
-    if (resHere.stdout) console.error(resHere.stdout);
-    if (resHere.stderr) console.error(resHere.stderr);
-    process.exit(1);
-  }
+  await initWorkspace({ targetDir: inPlaceDir, force: false });
   if (!exists(path.join(inPlaceDir, '.agent', 'rules', 'freya', 'agents', 'master.mdc'))) {
     throw new Error('in-place init did not create expected files');
   }
@@ -91,16 +61,7 @@ try {
   fs.writeFileSync(path.join(preserveDir, 'data', 'tasks', 'task-log.json'), JSON.stringify({ schemaVersion: 1, tasks: [{ id: 'keep', description: 'keep', category: 'DO_NOW', status: 'PENDING', createdAt: new Date().toISOString() }] }, null, 2));
   fs.writeFileSync(path.join(preserveDir, 'logs', 'daily', '2026-01-01.md'), 'keep\n', 'utf8');
 
-  const resPreserve = spawnSync('node', [path.join(repoRoot, 'bin/freya.js'), 'init', '--here'], {
-    cwd: preserveDir,
-    encoding: 'utf8'
-  });
-  if (resPreserve.status !== 0) {
-    console.error('❌ FAIL: freya init preserve run exited non-zero');
-    if (resPreserve.stdout) console.error(resPreserve.stdout);
-    if (resPreserve.stderr) console.error(resPreserve.stderr);
-    process.exit(1);
-  }
+  await initWorkspace({ targetDir: preserveDir, force: false });
   const afterTask = JSON.parse(fs.readFileSync(path.join(preserveDir, 'data', 'tasks', 'task-log.json'), 'utf8'));
   if (!afterTask.tasks || !afterTask.tasks.find((t) => t.id === 'keep')) {
     throw new Error('data/ was not preserved');
@@ -109,10 +70,12 @@ try {
     throw new Error('logs/ was not preserved');
   }
 
-  console.log('✅ PASS: freya init supports default dir, explicit dir, in-place, and preserves data/logs');
-} catch (e) {
+  console.log('✅ PASS: workspace init supports default dir, explicit dir, in-place, and preserves data/logs');
+}
+
+run().catch((e) => {
   console.error('❌ FAIL:', e.message);
   process.exit(1);
-} finally {
+}).finally(() => {
   try { fs.rmSync(tempRoot, { recursive: true, force: true }); } catch {}
-}
+});

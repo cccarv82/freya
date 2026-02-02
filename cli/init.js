@@ -118,7 +118,23 @@ function ensurePackageJson(targetDir, force, summary) {
   summary.updated.push('package.json');
 }
 
-async function cmdInit({ targetDir, force, forceData = false, forceLogs = false }) {
+function formatInitSummary(summary, targetDir) {
+  const lines = [];
+  lines.push('FREYA workspace initialized.');
+  lines.push(`Target: ${targetDir}`);
+  lines.push('');
+  lines.push(`Created: ${summary.created.length}`);
+  lines.push(`Updated: ${summary.updated.length}`);
+  lines.push(`Copied: ${summary.copied.length}`);
+  lines.push(`Skipped: ${summary.skipped.length}`);
+  lines.push('');
+  lines.push('Next steps:');
+  lines.push('- Run: npm run health');
+  lines.push('- (If upgrading old data) Run: npm run migrate');
+  return lines.join('\n');
+}
+
+async function initWorkspace({ targetDir, force, forceData = false, forceLogs = false }) {
   const templateDir = path.join(__dirname, '..', 'templates', 'base');
   if (!exists(templateDir)) throw new Error(`Missing template directory: ${templateDir}`);
 
@@ -135,20 +151,14 @@ async function cmdInit({ targetDir, force, forceData = false, forceLogs = false 
   // Ensure logs folder exists (no daily file created)
   mkdirp(path.join(targetDir, 'logs', 'daily'));
 
-  const lines = [];
-  lines.push('FREYA workspace initialized.');
-  lines.push(`Target: ${targetDir}`);
-  lines.push('');
-  lines.push(`Created: ${summary.created.length}`);
-  lines.push(`Updated: ${summary.updated.length}`);
-  lines.push(`Copied: ${summary.copied.length}`);
-  lines.push(`Skipped: ${summary.skipped.length}`);
-  lines.push('');
-  lines.push('Next steps:');
-  lines.push('- Run: npm run health');
-  lines.push('- (If upgrading old data) Run: npm run migrate');
-
-  process.stdout.write(lines.join('\n') + '\n');
+  const output = formatInitSummary(summary, targetDir);
+  return { output, summary };
 }
 
-module.exports = { cmdInit };
+async function cmdInit({ targetDir, force, forceData = false, forceLogs = false }) {
+  const { output } = await initWorkspace({ targetDir, force, forceData, forceLogs });
+  process.stdout.write(output + '\n');
+  return { output };
+}
+
+module.exports = { cmdInit, initWorkspace };

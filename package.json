@@ -18,6 +18,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "main": "bin/freya.js",
   "bin": {
     "freya": "bin/freya.js"
   },

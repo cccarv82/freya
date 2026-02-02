@@ -4,7 +4,7 @@ const path = require('path');
 const repoRoot = path.join(__dirname, '../..');
 
 try {
-  const res = spawnSync('node', [path.join(repoRoot, 'bin/freya.js'), 'help'], {
+  const res = spawnSync('node', [path.join(repoRoot, 'bin/freya.js'), '--help'], {
     cwd: repoRoot,
     encoding: 'utf8'
   });
@@ -15,12 +15,17 @@ try {
   }
 
   const out = (res.stdout || '') + (res.stderr || '');
-  if (!out.includes('freya web')) {
-    console.error('❌ FAIL: help missing freya web');
+  if (!out.includes('FREYA web')) {
+    console.error('❌ FAIL: help missing FREYA web header');
     process.exit(1);
   }
 
-  console.log('✅ PASS: CLI help includes web command');
+  if (!out.includes('--port')) {
+    console.error('❌ FAIL: help missing --port option');
+    process.exit(1);
+  }
+
+  console.log('✅ PASS: web help includes options');
 } catch (e) {
   console.error('❌ FAIL:', e.message);
   process.exit(1);

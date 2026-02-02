@@ -19,7 +19,7 @@ async function run() {
   const port = 3872 + Math.floor(Math.random() * 2000);
   const pkg = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'));
   const expectedVersion = pkg && pkg.version ? String(pkg.version) : 'unknown';
-  const child = spawn(process.execPath, ['bin/freya.js', 'web', '--no-open', '--port', String(port)], {
+  const child = spawn(process.execPath, ['bin/freya.js', '--no-open', '--port', String(port)], {
     cwd: process.cwd(),
     stdio: ['ignore', 'pipe', 'pipe']
   });

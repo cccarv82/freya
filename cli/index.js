@@ -3,32 +3,22 @@
 const fs = require('fs');
 const path = require('path');
 
-const { cmdInit } = require('./init');
 const { cmdWeb } = require('./web');
 
 function usage() {
   return `
-freya - F.R.E.Y.A. CLI
+freya - F.R.E.Y.A. Web
 
 Usage:
-  freya init [dir] [--force] [--here|--in-place] [--force-data] [--force-logs]
-  freya web [--port <n>] [--dir <path>] [--no-open] [--dev]
+  freya [--port <n>] [--dir <path>] [--no-open] [--dev]
 
 Defaults:
-  - If no [dir] is provided, creates ./freya
-  - Preserves existing data/ and logs/ by default
+  - Workspace defaults to ./freya
 
 Examples:
-  freya init              # creates ./freya
-  freya init my-workspace # creates ./my-workspace
-  freya init --here       # installs into current directory
-  freya init --here --force          # update agents/scripts, keep data/logs
-  freya init --here --force-data     # overwrite data/ too (danger)
-  npx @cccarv82/freya init
-
-  freya web
-  freya web --dir ./freya --port 3872
-  freya web --dev            # seeds demo data/logs for quick testing
+  freya
+  freya --dir ./freya --port 3872
+  freya --dev            # seeds demo data/logs for quick testing
 `;
 }
 
@@ -39,6 +29,10 @@ function parseArgs(argv) {
 
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
+    if (a === '-h') {
+      flags.add(a);
+      continue;
+    }
     if (a.startsWith('--')) {
       const next = argv[i + 1];
       if (next && !next.startsWith('--')) {
@@ -57,47 +51,32 @@ function parseArgs(argv) {
 
 async function run(argv) {
   const { args, flags, kv } = parseArgs(argv);
-  const command = args[0];
+  const positionals = args.filter((a) => a !== 'web');
 
-  if (!command || command === 'help' || flags.has('--help') || flags.has('-h')) {
+  if (flags.has('--help') || flags.has('-h')) {
     fs.writeSync(process.stdout.fd, usage());
     return;
   }
 
-  if (command === 'init') {
-    const inPlace = flags.has('--here') || flags.has('--in-place');
-    const defaultDir = path.join(process.cwd(), 'freya');
-    const targetDir = args[1]
-      ? path.resolve(process.cwd(), args[1])
-      : (inPlace ? process.cwd() : defaultDir);
-
-    const force = flags.has('--force');
-    const forceData = flags.has('--force-data');
-    const forceLogs = flags.has('--force-logs');
-
-    await cmdInit({ targetDir, force, forceData, forceLogs });
+  if (positionals.length > 0) {
+    process.stderr.write(`Unknown arguments: ${positionals.join(' ')}\n`);
+    fs.writeSync(process.stdout.fd, usage());
+    process.exitCode = 1;
     return;
   }
 
-  if (command === 'web') {
-    const port = Number(kv['--port'] || 3872);
-    const dir = kv['--dir'] ? path.resolve(process.cwd(), kv['--dir']) : null;
-    const open = !flags.has('--no-open');
-    const dev = flags.has('--dev');
+  const port = Number(kv['--port'] || 3872);
+  const dir = kv['--dir'] ? path.resolve(process.cwd(), kv['--dir']) : null;
+  const open = !flags.has('--no-open');
+  const dev = flags.has('--dev');
 
-    if (!Number.isFinite(port) || port <= 0) {
-      process.stderr.write('Invalid --port\n');
-      process.exitCode = 1;
-      return;
-    }
-
-    await cmdWeb({ port, dir, open, dev });
+  if (!Number.isFinite(port) || port <= 0) {
+    process.stderr.write('Invalid --port\n');
+    process.exitCode = 1;
     return;
   }
 
-  process.stderr.write(`Unknown command: ${command}\n`);
-  fs.writeSync(process.stdout.fd, usage());
-  process.exitCode = 1;
+  await cmdWeb({ port, dir, open, dev });
 }
 
 module.exports = { run };

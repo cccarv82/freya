@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const { spawn } = require('child_process');
 const { searchWorkspace } = require('../scripts/lib/search-utils');
 const { searchIndex } = require('../scripts/lib/index-utils');
+const { initWorkspace } = require('./init');
 
 function readAppVersion() {
   const pkgPath = path.join(__dirname, '..', 'package.json');
@@ -39,16 +40,6 @@ const CHAT_ID_PATTERNS = [
 function guessNpmCmd() {
   // We'll execute via cmd.exe on Windows for reliability.
   return process.platform === 'win32' ? 'npm' : 'npm';
-}
-
-function guessNpxCmd() {
-  // We'll execute via cmd.exe on Windows for reliability.
-  return process.platform === 'win32' ? 'npx' : 'npx';
-}
-
-function guessNpxYesFlag() {
-  // npx supports --yes/-y on modern npm; use -y for broad compatibility
-  return '-y';
 }
 
 function guessOpenCmd() {
@@ -2043,18 +2034,23 @@ async function cmdWeb({ port, dir, open, dev }) {
         }
 
         if (req.url === '/api/init') {
-          const pkg = '@cccarv82/freya';
-          const r = await run(guessNpxCmd(), [guessNpxYesFlag(), pkg, 'init', workspaceDir], process.cwd());
-          const output = (r.stdout + r.stderr).trim();
-          return safeJson(res, r.code === 0 ? 200 : 400, r.code === 0 ? { output } : { error: output || 'init failed', output });
+          try {
+            const { output } = await initWorkspace({ targetDir: workspaceDir, force: false, forceData: false, forceLogs: false });
+            return safeJson(res, 200, { output: String(output || '').trim() });
+          } catch (e) {
+            const message = e && e.message ? e.message : String(e);
+            return safeJson(res, 400, { error: message || 'init failed', output: '' });
+          }
         }
 
         if (req.url === '/api/update') {
-          const pkg = '@cccarv82/freya';
-          fs.mkdirSync(workspaceDir, { recursive: true });
-          const r = await run(guessNpxCmd(), [guessNpxYesFlag(), pkg, 'init', '--here'], workspaceDir);
-          const output = (r.stdout + r.stderr).trim();
-          return safeJson(res, r.code === 0 ? 200 : 400, r.code === 0 ? { output } : { error: output || 'update failed', output });
+          try {
+            const { output } = await initWorkspace({ targetDir: workspaceDir, force: false, forceData: false, forceLogs: false });
+            return safeJson(res, 200, { output: String(output || '').trim() });
+          } catch (e) {
+            const message = e && e.message ? e.message : String(e);
+            return safeJson(res, 400, { error: message || 'update failed', output: '' });
+          }
         }
 
         const npmCmd = guessNpmCmd();
