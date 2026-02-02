@@ -877,6 +877,11 @@ function reportsHtml(defaultDir) {
   return buildReportsHtml(safeDefault, APP_VERSION);
 }
 
+function projectsHtml(defaultDir) {
+  const safeDefault = String(defaultDir || './freya').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return buildProjectsHtml(safeDefault, APP_VERSION);
+}
+
 function companionHtml(defaultDir) {
   const safeDefault = String(defaultDir || './freya').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   return buildCompanionHtml(safeDefault, APP_VERSION);
