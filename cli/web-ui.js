@@ -680,6 +680,7 @@
   function wireRailNav() {
     const dash = $('railDashboard');
     const rep = $('railReports');
+    const health = $('railHealth');
     if (dash) {
       dash.onclick = () => {
         const isReports = document.body && document.body.dataset && document.body.dataset.page === 'reports';
@@ -695,6 +696,12 @@
       rep.onclick = () => {
         const isReports = document.body && document.body.dataset && document.body.dataset.page === 'reports';
         if (!isReports) window.location.href = '/reports';
+      };
+    }
+    if (health) {
+      health.onclick = () => {
+        const isHealth = document.body && document.body.dataset && document.body.dataset.page === 'health';
+        if (!isHealth) window.location.href = '/health';
       };
     }
   }
@@ -819,8 +826,39 @@
       ]);
       renderTasks((t && t.tasks) || []);
       renderBlockers((b && b.blockers) || []);
+      refreshBlockersInsights();
     } catch (e) {
       // keep silent in background refresh
+    }
+  }
+
+  function renderBlockersInsights(payload) {
+    const el = $('blockersInsights');
+    if (!el) return;
+    if (!payload || !payload.summary) {
+      el.textContent = 'Sem insights no momento.';
+      return;
+    }
+    const lines = [];
+    lines.push('<div class="help" style="margin-bottom:6px"><b>Resumo:</b> ' + escapeHtml(payload.summary) + '</div>');
+    if (payload.suggestions && payload.suggestions.length) {
+      lines.push('<div class="help"><b>Proximos passos:</b></div>');
+      lines.push('<ul style="margin:6px 0 0 18px; padding:0;">' + payload.suggestions.map((s) => '<li class="help">' + escapeHtml(s) + '</li>').join('') + '</ul>');
+    }
+    if (payload.top && payload.top.length) {
+      lines.push('<div class="help" style="margin-top:8px"><b>Top blockers:</b></div>');
+      lines.push('<ul style="margin:6px 0 0 18px; padding:0;">' + payload.top.map((b) => '<li class="help">' + escapeHtml(String(b.severity || '')) + ' - ' + escapeHtml(String(b.title || '')) + '</li>').join('') + '</ul>');
+    }
+    el.innerHTML = lines.join('');
+  }
+
+  async function refreshBlockersInsights() {
+    try {
+      const r = await api('/api/blockers/summary', { dir: dirOrDefault() });
+      renderBlockersInsights(r);
+    } catch (e) {
+      const el = $('blockersInsights');
+      if (el) el.textContent = 'Falha ao carregar insights.';
     }
   }
 
@@ -876,6 +914,50 @@
     } catch (e) {
       setPill('err', 'update failed');
       setOut(String(e && e.message ? e.message : e));
+    }
+  }
+
+  function renderHealthChecklist(items) {
+    const el = $('healthChecklist');
+    if (!el) return;
+    el.innerHTML = '';
+    const list = Array.isArray(items) ? items : [];
+    if (!list.length) {
+      const empty = document.createElement('div');
+      empty.className = 'help';
+      empty.textContent = 'Sem checks disponiveis.';
+      el.appendChild(empty);
+      return;
+    }
+    for (const it of list) {
+      const row = document.createElement('div');
+      row.className = 'rep';
+      const status = String(it.status || 'info');
+      row.innerHTML = '<div style="display:flex; justify-content:space-between; gap:10px; align-items:center">'
+        + '<div style="min-width:0"><div style="font-weight:800">' + escapeHtml(it.label || '') + '</div>'
+        + '<div class="help" style="margin-top:4px">' + escapeHtml(it.detail || '') + '</div></div>'
+        + '<div class="pill ' + escapeHtml(status) + '">' + escapeHtml(status) + '</div>'
+        + '</div>';
+      el.appendChild(row);
+    }
+  }
+
+  async function refreshHealthChecklist() {
+    try {
+      setPill('run', 'checklist…');
+      const r = await api('/api/health/checklist', { dir: dirOrDefault() });
+      if (r && r.needsInit) {
+        setOut(r.error || 'Workspace not initialized');
+        setPill('plan', 'needs init');
+        renderHealthChecklist([]);
+        return;
+      }
+      renderHealthChecklist(r.items || []);
+      setPill('ok', 'pronto');
+    } catch (e) {
+      setPill('err', 'checklist failed');
+      const el = $('healthChecklist');
+      if (el) el.textContent = 'Falha ao carregar checklist.';
     }
   }
 
@@ -1220,6 +1302,7 @@
   } catch {}
 
   const isReportsPage = document.body && document.body.dataset && document.body.dataset.page === 'reports';
+  const isHealthPage = document.body && document.body.dataset && document.body.dataset.page === 'health';
 
   // Load persisted settings from the workspace + bootstrap (auto-init + auto-health)
   (async () => {
@@ -1244,6 +1327,11 @@
 
     if (isReportsPage) {
       await refreshReportsPage();
+      return;
+    }
+
+    if (isHealthPage) {
+      await refreshHealthChecklist();
       return;
     }
 
@@ -1285,6 +1373,8 @@
   window.renderReportsList = renderReportsList;
   window.renderReportsPage = renderReportsPage;
   window.refreshReportsPage = refreshReportsPage;
+  window.refreshBlockersInsights = refreshBlockersInsights;
+  window.refreshHealthChecklist = refreshHealthChecklist;
   window.copyOut = copyOut;
   window.copyPath = copyPath;
   window.openSelected = openSelected;

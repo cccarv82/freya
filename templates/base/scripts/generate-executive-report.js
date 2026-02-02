@@ -407,7 +407,8 @@ function generateReport(period) {
 
     // Save
     ensureDir(OUTPUT_DIR);
-    const filename = `executive-${period}-${dateStr}.md`;
+    const timeStr = new Date().toTimeString().slice(0, 8).replace(/:/g, '');
+    const filename = `executive-${period}-${dateStr}-${timeStr}.md`;
     const outputPath = path.join(OUTPUT_DIR, filename);
     fs.writeFileSync(outputPath, md, 'utf8');
 

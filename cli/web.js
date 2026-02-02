@@ -877,6 +877,11 @@ function reportsHtml(defaultDir) {
   return buildReportsHtml(safeDefault, APP_VERSION);
 }
 
+function healthHtml(defaultDir) {
+  const safeDefault = String(defaultDir || './freya').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return buildHealthHtml(safeDefault, APP_VERSION);
+}
+
 function buildHtml(safeDefault, appVersion) {
   const safeVersion = escapeHtml(appVersion || 'unknown');
   return `<!doctype html>
@@ -899,6 +904,7 @@ function buildHtml(safeDefault, appVersion) {
           <div class="railNav">
             <button class="railBtn active" id="railDashboard" type="button" title="Dashboard">D</button>
             <button class="railBtn" id="railReports" type="button" title="Relatórios">R</button>
+            <button class="railBtn" id="railHealth" type="button" title="Saude">H</button>
           </div>
           <div class="railBottom">
             <div class="railStatus" id="railStatus" title="status"></div>
@@ -999,6 +1005,10 @@ function buildHtml(safeDefault, appVersion) {
                   <div style="height:12px"></div>
                   <div class="small" style="margin-bottom:8px; opacity:.8">Bloqueios abertos</div>
                   <div id="blockersList" style="display:grid; gap:8px"></div>
+                  <div style="height:12px"></div>
+                  <div class="small" style="margin-bottom:8px; opacity:.8">Insights de blockers</div>
+                  <div id="blockersInsights" class="help"></div>
+                  <div style="margin-top:8px"><button class="btn small" type="button" onclick="refreshBlockersInsights()">Atualizar insights</button></div>
                 </div>
               </section>
 
@@ -1144,6 +1154,7 @@ function buildReportsHtml(safeDefault, appVersion) {
           <div class="railNav">
             <button class="railBtn" id="railDashboard" type="button" title="Dashboard">D</button>
             <button class="railBtn active" id="railReports" type="button" title="Relatórios">R</button>
+            <button class="railBtn" id="railHealth" type="button" title="Saude">H</button>
           </div>
           <div class="railBottom">
             <div class="railStatus" id="railStatus" title="status"></div>
@@ -1183,6 +1194,87 @@ function buildReportsHtml(safeDefault, appVersion) {
             </section>
 
             <section class="reportsGrid" id="reportsGrid"></section>
+          </div>
+        </main>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.__FREYA_DEFAULT_DIR = "${safeDefault}";
+  </script>
+  <script src="/app.js"></script>
+</body>
+</html>`
+}
+
+function buildHealthHtml(safeDefault, appVersion) {
+  const safeVersion = escapeHtml(appVersion || 'unknown');
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FREYA Health</title>
+  <link rel="stylesheet" href="/app.css" />
+</head>
+<body data-page="health">
+  <div class="app">
+    <div class="frame">
+      <div class="shell">
+
+        <aside class="rail">
+          <div class="railTop">
+            <div class="railLogo">F</div>
+          </div>
+          <div class="railNav">
+            <button class="railBtn" id="railDashboard" type="button" title="Dashboard">D</button>
+            <button class="railBtn" id="railReports" type="button" title="Relatórios">R</button>
+            <button class="railBtn active" id="railHealth" type="button" title="Saude">H</button>
+          </div>
+          <div class="railBottom">
+            <div class="railStatus" id="railStatus" title="status"></div>
+          </div>
+        </aside>
+
+        <main class="center reportsPage" id="healthPage">
+          <div class="topbar">
+            <div class="brandLine">
+              <span class="spark"></span>
+              <div class="brandStack">
+                <div class="brand">FREYA</div>
+                <div class="brandSub">Checklist de Saude</div>
+              </div>
+            </div>
+            <div class="topActions">
+              <span class="chip" id="chipVersion">v${safeVersion}</span>
+              <span class="chip" id="chipPort">127.0.0.1:3872</span>
+            </div>
+          </div>
+
+          <div class="centerBody">
+            <input id="dir" type="hidden" />
+
+            <section class="reportsHeader">
+              <div>
+                <div class="reportsTitle">Checklist de Saude</div>
+                <div class="reportsSubtitle">Verificacoes rapidas antes de reunioes e rituais.</div>
+              </div>
+              <div class="reportsActions">
+                <button class="btn small" type="button" onclick="refreshHealthChecklist()">Atualizar</button>
+                <button class="btn small" type="button" onclick="doHealth()">Rodar health</button>
+              </div>
+            </section>
+
+            <section class="reportsTools" style="grid-template-columns: repeat(auto-fit,minmax(180px,1fr));">
+              <button class="btn" type="button" onclick="runReport('daily')">Gerar Daily</button>
+              <button class="btn" type="button" onclick="runReport('blockers')">Gerar Blockers</button>
+              <button class="btn" type="button" onclick="runReport('status')">Gerar Status</button>
+              <button class="btn" type="button" onclick="runReport('sm-weekly')">Gerar SM Weekly</button>
+            </section>
+
+            <section class="reportsGrid" id="healthChecklist"></section>
           </div>
         </main>
 
@@ -1506,6 +1598,14 @@ async function cmdWeb({ port, dir, open, dev }) {
       if (req.method === 'GET' && req.url === '/reports') {
         try { res.__freyaDebug.workspaceDir = normalizeWorkspaceDir(dir || './freya'); } catch {}
         const body = reportsHtml(dir || './freya');
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+        res.end(body);
+        return;
+      }
+
+      if (req.method === 'GET' && req.url === '/health') {
+        try { res.__freyaDebug.workspaceDir = normalizeWorkspaceDir(dir || './freya'); } catch {}
+        const body = healthHtml(dir || './freya');
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
         res.end(body);
         return;
@@ -2304,6 +2404,72 @@ async function cmdWeb({ port, dir, open, dev }) {
           return safeJson(res, 200, { ok: true, task: updated });
         }
 
+        if (req.url === '/api/health/checklist') {
+          if (!looksLikeFreyaWorkspace(workspaceDir)) {
+            return safeJson(res, 200, { ok: false, needsInit: true, error: 'Workspace not initialized', items: [] });
+          }
+
+          const tasksFile = path.join(workspaceDir, 'data', 'tasks', 'task-log.json');
+          const blockersFile = path.join(workspaceDir, 'data', 'blockers', 'blocker-log.json');
+          const tasksDoc = readJsonOrNull(tasksFile) || { schemaVersion: 1, tasks: [] };
+          const blockersDoc = readJsonOrNull(blockersFile) || { schemaVersion: 1, blockers: [] };
+
+          const pendingTasks = (tasksDoc.tasks || []).filter((t) => t && t.status === 'PENDING' && t.category === 'DO_NOW').length;
+          const openBlockers = (blockersDoc.blockers || []).filter((b) => b && String(b.status || '').trim() === 'OPEN').length;
+
+          const today = isoDate();
+          const reports = listReports(workspaceDir);
+          const reportsToday = reports.filter((r) => r && String(r.name || '').includes(today)).length;
+
+          const items = [
+            { label: 'Workspace inicializada', status: 'ok', detail: 'ok' },
+            { label: 'Blockers abertos', status: openBlockers > 0 ? 'warn' : 'ok', detail: `${openBlockers} aberto(s)` },
+            { label: 'Tarefas DO_NOW pendentes', status: pendingTasks > 0 ? 'warn' : 'ok', detail: `${pendingTasks} pendente(s)` },
+            { label: 'Relatorios de hoje', status: reportsToday > 0 ? 'ok' : 'warn', detail: `${reportsToday} gerado(s)` }
+          ];
+
+          return safeJson(res, 200, { ok: true, items, stats: { pendingTasks, openBlockers, reportsToday, reportsTotal: reports.length } });
+        }
+
+        if (req.url === '/api/blockers/summary') {
+          const file = path.join(workspaceDir, 'data', 'blockers', 'blocker-log.json');
+          const doc = readJsonOrNull(file) || { schemaVersion: 1, blockers: [] };
+          const blockers = Array.isArray(doc.blockers) ? doc.blockers : [];
+
+          const open = blockers.filter((b) => b && String(b.status || '').trim() === 'OPEN');
+          const sevCount = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, OTHER: 0 };
+          const now = Date.now();
+          let older7 = 0;
+          let missingSlug = 0;
+
+          for (const b of open) {
+            const sev = String(b.severity || '').toUpperCase();
+            if (sevCount[sev] !== undefined) sevCount[sev]++; else sevCount.OTHER++;
+            if (!b.projectSlug) missingSlug++;
+            const created = b.createdAt ? Date.parse(b.createdAt) : null;
+            if (created && now - created > 7 * 24 * 60 * 60 * 1000) older7++;
+          }
+
+          const top = open
+            .sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')))
+            .slice(0, 5)
+            .map((b) => ({
+              id: b.id,
+              title: b.title || b.description || 'Sem titulo',
+              severity: b.severity || 'UNKNOWN',
+              projectSlug: b.projectSlug || null
+            }));
+
+          const suggestions = [];
+          if (sevCount.CRITICAL > 0) suggestions.push('Escalar blockers CRITICAL agora e definir dono/ETA.');
+          if (sevCount.HIGH > 0) suggestions.push('Agendar alinhamento rapido para blockers HIGH.');
+          if (missingSlug > 0) suggestions.push('Adicionar projectSlug nos blockers sem contexto.');
+          if (older7 > 0) suggestions.push('Revisar blockers com mais de 7 dias e decidir: resolver ou descartar.');
+          if (!suggestions.length) suggestions.push('Nenhuma acao urgente. Monitorar diariamente.');
+
+          const summary = `CRITICAL: ${sevCount.CRITICAL}, HIGH: ${sevCount.HIGH}, MEDIUM: ${sevCount.MEDIUM}, LOW: ${sevCount.LOW}, TOTAL: ${open.length}`;
+          return safeJson(res, 200, { ok: true, summary, counts: sevCount, suggestions, top });
+        }
         if (req.url === '/api/blockers/list') {
           const limit = Math.max(1, Math.min(50, Number(payload.limit || 10)));
           const status = payload.status ? String(payload.status).trim() : 'OPEN';

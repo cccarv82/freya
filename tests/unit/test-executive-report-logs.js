@@ -9,7 +9,7 @@ const logsDir = path.join(repoRoot, 'logs/daily');
 const reportsDir = path.join(repoRoot, 'docs/reports');
 const dateStr = toIsoDate(new Date());
 const logPath = path.join(logsDir, `${dateStr}.md`);
-const reportPath = path.join(reportsDir, `executive-daily-${dateStr}.md`);
+let reportPath = null;
 
 const sampleLog = `# Daily Log\n- Met with team about release\n- Blocked by API timeout\n`;
 
@@ -22,8 +22,12 @@ try {
   if (fs.existsSync(logPath)) {
     previousLog = fs.readFileSync(logPath, 'utf8');
   }
-  if (fs.existsSync(reportPath)) {
-    previousReport = fs.readFileSync(reportPath, 'utf8');
+  const existingReports = fs.readdirSync(reportsDir, { withFileTypes: true })
+    .filter((e) => e.isFile() && e.name.startsWith(`executive-daily-${dateStr}`))
+    .map((e) => path.join(reportsDir, e.name));
+  if (existingReports.length) {
+    existingReports.sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
+    previousReport = fs.readFileSync(existingReports[0], 'utf8');
   }
 
   fs.writeFileSync(logPath, sampleLog, 'utf8');
@@ -33,6 +37,12 @@ try {
     stdio: 'ignore'
   });
 
+  const generated = fs.readdirSync(reportsDir, { withFileTypes: true })
+    .filter((e) => e.isFile() && e.name.startsWith(`executive-daily-${dateStr}`))
+    .map((e) => path.join(reportsDir, e.name));
+  if (!generated.length) throw new Error('Report file not found');
+  generated.sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
+  reportPath = generated[0];
   const report = fs.readFileSync(reportPath, 'utf8');
 
   assert.ok(report.includes('Contexto dos Logs'), 'Should include daily log context section');
@@ -49,9 +59,11 @@ try {
     fs.unlinkSync(logPath);
   }
 
-  if (previousReport !== null) {
-    fs.writeFileSync(reportPath, previousReport, 'utf8');
-  } else if (fs.existsSync(reportPath)) {
-    fs.unlinkSync(reportPath);
+  if (reportPath && fs.existsSync(reportPath)) {
+    if (previousReport !== null) {
+      fs.writeFileSync(reportPath, previousReport, 'utf8');
+    } else {
+      fs.unlinkSync(reportPath);
+    }
   }
 }

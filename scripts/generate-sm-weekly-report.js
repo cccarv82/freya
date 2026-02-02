@@ -67,6 +67,7 @@ function generate() {
   start.setDate(now.getDate() - 7);
 
   const reportDate = toIsoDate(now);
+const reportTime = (() => { const d = new Date(); const hh = String(d.getHours()).padStart(2,'0'); const mm = String(d.getMinutes()).padStart(2,'0'); const ss = String(d.getSeconds()).padStart(2,'0'); return `${hh}${mm}${ss}`; })();
 
   const taskLog = readJsonOrQuarantine(TASKS_FILE, { schemaVersion: 1, tasks: [] });
   const blockersLog = readJsonOrQuarantine(BLOCKERS_FILE, { schemaVersion: 1, blockers: [] });
@@ -198,7 +199,7 @@ function generate() {
     }
   }
 
-  const outPath = path.join(REPORT_DIR, `sm-weekly-${reportDate}.md`);
+  const outPath = path.join(REPORT_DIR, `sm-weekly-${reportDate}-${reportTime}.md`);
   fs.writeFileSync(outPath, md, 'utf8');
   console.log(md);
   console.log(`\nSaved: ${outPath}`);

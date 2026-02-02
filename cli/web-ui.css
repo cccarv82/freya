@@ -240,6 +240,11 @@ body {
 .topActions { display: flex; align-items: center; gap: 10px; }
 .chip { font-family: var(--mono); font-size: 12px; padding: 7px 10px; border-radius: 999px; border: 1px solid var(--line); background: rgba(0,0,0,.22); color: var(--faint); }
 
+.pill { font-family: var(--mono); font-size: 11px; padding: 4px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--paper2); color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.pill.ok { background: rgba(16, 185, 129, .12); color: #065f46; border-color: rgba(16, 185, 129, .28); }
+.pill.warn { background: rgba(245, 158, 11, .18); color: #92400e; border-color: rgba(245, 158, 11, .35); }
+.pill.info { background: rgba(59, 130, 246, .14); color: #1e3a8a; border-color: rgba(59, 130, 246, .35); }
+
 .centerBody {
   padding: 16px 20px 20px;
   overflow: auto;

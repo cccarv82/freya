@@ -93,7 +93,8 @@ function generateDailySummary() {
         try {
             fs.mkdirSync(REPORT_DIR, { recursive: true });
             const date = new Date().toISOString().slice(0, 10);
-            const outPath = path.join(REPORT_DIR, `daily-${date}.md`);
+            const time = new Date().toTimeString().slice(0, 8).replace(/:/g, '');
+            const outPath = path.join(REPORT_DIR, `daily-${date}-${time}.md`);
             fs.writeFileSync(outPath, `# Daily Summary — ${date}\n\n${summary}\n`, 'utf8');
         } catch (e) {
             // non-fatal

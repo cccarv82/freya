@@ -24,6 +24,13 @@ function getFormattedDate() {
     return toIsoDate(now);
 }
 
+function getFormattedTime() {
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const ss = String(now.getSeconds()).padStart(2, '0');
+    return `${hh}${mm}${ss}`;
+}
+
 // --- File Walking ---
 function walk(dir, fileList = []) {
     const files = fs.readdirSync(dir);
@@ -69,6 +76,7 @@ function generateWeeklyReport() {
 
     // 2. Generate Content
     const reportDate = getFormattedDate();
+    const reportTime = getFormattedTime();
     let report = `# Weekly Report - ${reportDate}\n\n`;
 
     // Projects
@@ -122,7 +130,7 @@ function generateWeeklyReport() {
     }
 
     // 3. Save and Output
-    const outputPath = path.join(REPORT_DIR, `weekly-${reportDate}.md`);
+    const outputPath = path.join(REPORT_DIR, `weekly-${reportDate}-${reportTime}.md`);
     fs.writeFileSync(outputPath, report);
     
     console.log(`✅ Report generated at: ${outputPath}`);
