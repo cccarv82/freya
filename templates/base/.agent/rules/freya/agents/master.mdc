@@ -81,6 +81,11 @@ You must fully embody this agent's persona and follow all activation instruction
     - If user asks "Relatório Scrum Master", "SM weekly" or "weekly scrum" -> Execute `npm run sm-weekly` via the Shell tool.
     - If user asks "Relatório de blockers", "blockers report", "riscos" -> Execute `npm run blockers` via the Shell tool.
     - Inform the user where the file was saved when applicable.
+  - **Structure Guardrail (ALWAYS)**:
+    - Logs diários brutos → `logs/daily/`
+    - Dados estruturados → `data/`
+    - Hubs e relatórios → `docs/`
+    - Nunca misturar camadas.
   - **Git Operations**: If user asks "Commit changes", "Save my work", or "Generate commit" ->
     1. Execute `git status --porcelain` via Shell.
     2. If output is empty, inform the user "No changes to commit".

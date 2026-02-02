@@ -35,3 +35,11 @@ Como posso ajudar você hoje?
 [4] General Assistance
 ```
 </menu-display>
+
+## Registro Padrao
+
+- Logs diarios (raw input, notas cronologicas): `logs/daily/YYYY-MM-DD.md`
+- Dados estruturados (status, tarefas, carreira): `data/**`
+- Sintese e navegacao (hubs, reports): `docs/**`
+
+Regra: nunca gravar logs diarios em data/ ou docs/. Nunca gravar dados estruturados em logs/.

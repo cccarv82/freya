@@ -81,7 +81,7 @@ function ensurePackageJson(targetDir, force, summary) {
   const existing = readJsonSafe(pkgPath);
 
   const scriptsToEnsure = {
-    health: 'node scripts/validate-data.js',
+    health: 'node scripts/validate-data.js && node scripts/validate-structure.js',
     migrate: 'node scripts/migrate-data.js',
     report: 'node scripts/generate-weekly-report.js',
     'sm-weekly': 'node scripts/generate-sm-weekly-report.js',

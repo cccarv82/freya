@@ -14,6 +14,14 @@ Before ANY attempt to parse, classify, or understand the input, you MUST write t
 This ensures no data is lost even if the subsequent steps fail.
 </critical-rule>
 
+<structure-guardrails>
+**Pasta correta, sempre:**
+- Logs diários brutos → `logs/daily/YYYY-MM-DD.md`
+- Dados estruturados → `data/**` (tasks, career, Clients/.../status.json)
+- Documentos de síntese/hubs/relatórios → `docs/**`
+Nunca gravar dados estruturados em `logs/` e nunca colocar notas diárias em `docs/`.
+</structure-guardrails>
+
 <workflow>
 1.  **Receive Input:** The user provides text (status update, blocker, random thought, etc.).
 2.  **Safe Log (PRIORITY):**

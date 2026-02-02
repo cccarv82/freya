@@ -8,7 +8,7 @@ try {
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
   assert.strictEqual(packageJson.name, '@cccarv82/freya');
   assert.ok(packageJson.scripts, 'scripts object should exist');
-  assert.strictEqual(packageJson.scripts.health, 'node scripts/validate-data.js', 'health script matches');
+  assert.strictEqual(packageJson.scripts.health, 'node scripts/validate-data.js && node scripts/validate-structure.js', 'health script matches');
   assert.ok(packageJson.bin && packageJson.bin.freya === 'bin/freya.js', 'bin.freya must exist');
   console.log('✅ Package config validation passed');
 } catch (err) {
