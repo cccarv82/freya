@@ -905,6 +905,7 @@ function buildHtml(safeDefault, appVersion) {
             <button class="railBtn active" id="railDashboard" type="button" title="Dashboard">D</button>
             <button class="railBtn" id="railReports" type="button" title="Relatórios">R</button>
             <button class="railBtn" id="railCompanion" type="button" title="Companion">C</button>
+                      <button class="railBtn" id="railProjects" type="button" title="Projects">P</button>
           </div>
           <div class="railBottom">
             <div class="railStatus" id="railStatus" title="status"></div>
@@ -1155,6 +1156,7 @@ function buildReportsHtml(safeDefault, appVersion) {
             <button class="railBtn" id="railDashboard" type="button" title="Dashboard">D</button>
             <button class="railBtn active" id="railReports" type="button" title="Relatórios">R</button>
             <button class="railBtn" id="railCompanion" type="button" title="Companion">C</button>
+                      <button class="railBtn" id="railProjects" type="button" title="Projects">P</button>
           </div>
           <div class="railBottom">
             <div class="railStatus" id="railStatus" title="status"></div>
@@ -1209,6 +1211,84 @@ function buildReportsHtml(safeDefault, appVersion) {
 </html>`
 }
 
+function buildProjectsHtml(safeDefault, appVersion) {
+  const safeVersion = escapeHtml(appVersion || 'unknown');
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Projects</title>
+  <link rel="stylesheet" href="/app.css" />
+</head>
+<body data-page="projects">
+  <div class="app">
+    <div class="frame">
+      <div class="shell">
+
+        <aside class="rail">
+          <div class="railTop">
+            <div class="railLogo">F</div>
+          </div>
+          <div class="railNav">
+            <button class="railBtn" id="railDashboard" type="button" title="Dashboard">D</button>
+            <button class="railBtn" id="railReports" type="button" title="Relatorios">R</button>
+            <button class="railBtn" id="railCompanion" type="button" title="Companion">C</button>
+            <button class="railBtn active" id="railProjects" type="button" title="Projects">P</button>
+          </div>
+          <div class="railBottom">
+            <div class="railStatus" id="railStatus" title="status"></div>
+          </div>
+        </aside>
+
+        <main class="center reportsPage" id="projectsPage">
+          <div class="topbar">
+            <div class="brandLine">
+              <span class="spark"></span>
+              <div class="brandStack">
+                <div class="brand">FREYA</div>
+                <div class="brandSub">Projects</div>
+              </div>
+            </div>
+            <div class="topActions">
+              <span class="chip" id="chipVersion">v${safeVersion}</span>
+              <span class="chip" id="chipPort">127.0.0.1:3872</span>
+            </div>
+          </div>
+
+          <div class="centerBody">
+            <input id="dir" type="hidden" />
+
+            <section class="reportsHeader">
+              <div>
+                <div class="reportsTitle">Projects</div>
+                <div class="reportsSubtitle">Status por projeto com ultima atualizacao e riscos.</div>
+              </div>
+              <div class="reportsActions">
+                <button class="btn small" type="button" onclick="refreshProjects()">Atualizar</button>
+              </div>
+            </section>
+
+            <section class="reportsTools">
+              <input id="projectsFilter" placeholder="filtrar (cliente, projeto, tag)" oninput="renderProjects()" />
+            </section>
+
+            <section class="reportsGrid" id="projectsGrid"></section>
+          </div>
+        </main>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.__FREYA_DEFAULT_DIR = "${safeDefault}";
+  </script>
+  <script src="/app.js"></script>
+</body>
+</html>`;
+}
+
 function buildCompanionHtml(safeDefault, appVersion) {
   const safeVersion = escapeHtml(appVersion || 'unknown');
   return `<!doctype html>
@@ -1232,6 +1312,7 @@ function buildCompanionHtml(safeDefault, appVersion) {
             <button class="railBtn" id="railDashboard" type="button" title="Dashboard">D</button>
             <button class="railBtn" id="railReports" type="button" title="Relatórios">R</button>
             <button class="railBtn active" id="railCompanion" type="button" title="Companion">C</button>
+                      <button class="railBtn" id="railProjects" type="button" title="Projects">P</button>
           </div>
           <div class="railBottom">
             <div class="railStatus" id="railStatus" title="status"></div>
@@ -1616,6 +1697,14 @@ async function cmdWeb({ port, dir, open, dev }) {
         return;
       }
 
+      if (req.method === 'GET' && req.url === '/projects') {
+        try { res.__freyaDebug.workspaceDir = normalizeWorkspaceDir(dir || './freya'); } catch {}
+        const body = projectsHtml(dir || './freya');
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+        res.end(body);
+        return;
+      }
+
       if (req.method === 'GET' && req.url === '/app.css') {
         const css = fs.readFileSync(path.join(__dirname, 'web-ui.css'), 'utf8');
         res.writeHead(200, { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': 'no-store' });
@@ -1701,7 +1790,41 @@ async function cmdWeb({ port, dir, open, dev }) {
           return safeJson(res, 200, { ok: true, map: out });
         }
 
-        if (req.url === '/api/reports/list') {
+        if (req.url === '/api/projects/list') {
+          const base = path.join(workspaceDir, 'data', 'Clients');
+          const items = [];
+          if (exists(base)) {
+            const stack = [base];
+            while (stack.length) {
+              const dirp = stack.pop();
+              const entries = fs.readdirSync(dirp, { withFileTypes: true });
+              for (const ent of entries) {
+                const full = path.join(dirp, ent.name);
+                if (ent.isDirectory()) stack.push(full);
+                else if (ent.isFile() && ent.name === 'status.json') {
+                  const doc = readJsonOrNull(full) || {};
+                  const rel = path.relative(base, path.dirname(full)).replace(/\\/g, '/');
+                  items.push({
+                    slug: rel,
+                    client: doc.client || null,
+                    program: doc.program || null,
+                    stream: doc.stream || null,
+                    project: doc.project || null,
+                    active: doc.active !== false,
+                    currentStatus: doc.currentStatus || '',
+                    lastUpdated: doc.lastUpdated || '',
+                    tags: Array.isArray(doc.tags) ? doc.tags : [],
+                    historyCount: Array.isArray(doc.history) ? doc.history.length : 0
+                  });
+                }
+              }
+            }
+          }
+          items.sort((a,b)=> String(b.lastUpdated||'').localeCompare(String(a.lastUpdated||'')));
+          return safeJson(res, 200, { ok: true, projects: items });
+        }
+
+if (req.url === '/api/reports/list') {
           const reports = listReports(workspaceDir);
           return safeJson(res, 200, { reports });
         }

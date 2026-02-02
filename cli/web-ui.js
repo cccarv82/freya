@@ -656,6 +656,48 @@
       grid.appendChild(card);    }
   }
 
+  function renderProjects() {
+    const el = $('projectsGrid');
+    if (!el) return;
+    const filter = String(($('projectsFilter') && $('projectsFilter').value) || '').toLowerCase();
+    const items = Array.isArray(state.projects) ? state.projects : [];
+    const filtered = items.filter((p) => {
+      const hay = [p.client, p.program, p.stream, p.project, p.slug, (p.tags||[]).join(' ')].join(' ').toLowerCase();
+      return !filter || hay.includes(filter);
+    });
+    el.innerHTML = '';
+    for (const p of filtered) {
+      const card = document.createElement('div');
+      card.className = 'reportCard';
+      card.innerHTML = '<div class="reportHead">'
+        + '<div><div class="reportTitle">' + escapeHtml(p.project || p.slug || 'Projeto') + '</div>'
+        + '<div class="reportMeta">' + escapeHtml([p.client, p.program, p.stream].filter(Boolean).join(' · ')) + '</div></div>'
+        + '<div class="reportActions">' + (p.active ? '<span class="pill ok">ativo</span>' : '<span class="pill warn">inativo</span>') + '</div>'
+        + '</div>'
+        + '<div class="help" style="margin-top:8px">' + escapeHtml(p.currentStatus || 'Sem status') + '</div>'
+        + '<div class="reportMeta" style="margin-top:8px">Última atualização: ' + escapeHtml(p.lastUpdated || '—') + '</div>'
+        + '<div class="reportMeta">Eventos: ' + escapeHtml(String(p.historyCount || 0)) + '</div>';
+      el.appendChild(card);
+    }
+    if (!filtered.length) {
+      const empty = document.createElement('div');
+      empty.className = 'help';
+      empty.textContent = 'Nenhum projeto encontrado.';
+      el.appendChild(empty);
+    }
+  }
+
+  async function refreshProjects() {
+    try {
+      const r = await api('/api/projects/list', { dir: dirOrDefault() });
+      state.projects = r.projects || [];
+      renderProjects();
+    } catch (e) {
+      const el = $('projectsGrid');
+      if (el) el.textContent = 'Falha ao carregar projetos.';
+    }
+  }
+
   async function refreshReportsPage() {
     try {
       setPill('run', 'carregando…');
@@ -680,6 +722,7 @@
   function wireRailNav() {
     const dash = $('railDashboard');
     const rep = $('railReports');
+    const proj = $('railProjects');
     const health = $('railCompanion');
     if (dash) {
       dash.onclick = () => {
@@ -696,6 +739,12 @@
       rep.onclick = () => {
         const isReports = document.body && document.body.dataset && document.body.dataset.page === 'reports';
         if (!isReports) window.location.href = '/reports';
+      };
+    }
+    if (proj) {
+      proj.onclick = () => {
+        const isProjects = document.body && document.body.dataset && document.body.dataset.page === 'projects';
+        if (!isProjects) window.location.href = '/projects';
       };
     }
     if (health) {
@@ -1314,6 +1363,7 @@
   } catch {}
 
   const isReportsPage = document.body && document.body.dataset && document.body.dataset.page === 'reports';
+  const isProjectsPage = document.body && document.body.dataset && document.body.dataset.page === 'projects';
   const isCompanionPage = document.body && document.body.dataset && document.body.dataset.page === 'companion';
 
   // Load persisted settings from the workspace + bootstrap (auto-init + auto-health)
@@ -1339,6 +1389,11 @@
 
     if (isReportsPage) {
       await refreshReportsPage();
+      return;
+    }
+
+    if (isProjectsPage) {
+      await refreshProjects();
       return;
     }
 
@@ -1385,6 +1440,7 @@
   window.renderReportsList = renderReportsList;
   window.renderReportsPage = renderReportsPage;
   window.refreshReportsPage = refreshReportsPage;
+  window.refreshProjects = refreshProjects;
   window.refreshBlockersInsights = refreshBlockersInsights;
   window.refreshHealthChecklist = refreshHealthChecklist;
   window.copyOut = copyOut;
