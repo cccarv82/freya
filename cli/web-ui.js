@@ -881,7 +881,8 @@
   async function doInit() {
     try {
       saveLocal();
-      $('sidePath').textContent = dirOrDefault();
+      const sp = $('sidePath');
+      if (sp) sp.textContent = dirOrDefault();
       setPill('run', 'init…');
       setOut('');
       const r = await api('/api/init', { dir: dirOrDefault() });
