@@ -1275,6 +1275,13 @@ function buildHealthHtml(safeDefault, appVersion) {
             </section>
 
             <section class="reportsGrid" id="healthChecklist"></section>
+
+            <section class="panel" style="margin-top:16px">
+              <div class="panelHead"><b>Saida</b></div>
+              <div class="panelBody">
+                <div id="reportPreview" class="log md" style="font-family: var(--sans);"></div>
+              </div>
+            </section>
           </div>
         </main>
 

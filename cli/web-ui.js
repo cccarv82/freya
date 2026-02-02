@@ -977,6 +977,9 @@
       setOut(r.output);
       setLast(null);
       setPill('ok', 'health ok');
+      if (isHealthPage) {
+        refreshHealthChecklist();
+      }
     } catch (e) {
       setPill('err', 'health failed');
       setOut(String(e && e.message ? e.message : e));
@@ -1010,6 +1013,9 @@
       setLast(r.reportPath || null);
       if (r.reportText) state.lastText = r.reportText;
       await refreshReports({ selectLatest: true });
+      if (isHealthPage) {
+        refreshHealthChecklist();
+      }
       setPill('ok', name + ' ok');
     } catch (e) {
       setPill('err', name + ' failed');
