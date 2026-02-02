@@ -1525,12 +1525,23 @@ async function cmdWeb({ port, dir, open, dev }) {
         return;
       }
 
+      if (req.method === 'GET' && req.url === '/favicon.ico') {
+        res.writeHead(204, { 'Cache-Control': 'no-store' });
+        res.end();
+        return;
+      }
+
       if (req.url.startsWith('/api/')) {
         const raw = await readBody(req);
         const payload = raw ? JSON.parse(raw) : {};
 
         const requestedDir = payload.dir || dir || './freya';
-        const workspaceDir = normalizeWorkspaceDir(requestedDir);
+        let workspaceDir;
+        try {
+          workspaceDir = normalizeWorkspaceDir(requestedDir);
+        } catch {
+          workspaceDir = path.resolve(process.cwd(), requestedDir);
+        }
 
         // debug logging (always on)
         try {
@@ -2035,7 +2046,15 @@ async function cmdWeb({ port, dir, open, dev }) {
 
         if (req.url === '/api/init') {
           try {
-            const { output } = await initWorkspace({ targetDir: workspaceDir, force: false, forceData: false, forceLogs: false });
+            const requestedInitDir = String(payload.dir || '').trim() || './freya';
+            let initDir;
+            try {
+              initDir = normalizeWorkspaceDir(requestedInitDir);
+            } catch {
+              initDir = path.resolve(process.cwd(), requestedInitDir);
+            }
+            res.__freyaDebug.workspaceDir = initDir;
+            const { output } = await initWorkspace({ targetDir: initDir, force: false, forceData: false, forceLogs: false });
             return safeJson(res, 200, { output: String(output || '').trim() });
           } catch (e) {
             const message = e && e.message ? e.message : String(e);
@@ -2056,6 +2075,9 @@ async function cmdWeb({ port, dir, open, dev }) {
         const npmCmd = guessNpmCmd();
 
         if (req.url === '/api/health') {
+          if (!looksLikeFreyaWorkspace(workspaceDir)) {
+            return safeJson(res, 200, { ok: false, needsInit: true, error: 'Workspace not initialized' });
+          }
           const r = await run(npmCmd, ['run', 'health'], workspaceDir);
           const output = (r.stdout + r.stderr).trim();
           return safeJson(res, r.code === 0 ? 200 : 400, r.code === 0 ? { output } : { error: output || 'health failed', output });

@@ -886,6 +886,12 @@
       setPill('run', 'health…');
       setOut('');
       const r = await api('/api/health', { dir: dirOrDefault() });
+      if (r && r.needsInit) {
+        setOut(r.error || 'Workspace not initialized');
+        setLast(null);
+        setPill('plan', 'needs init');
+        return;
+      }
       setOut(r.output);
       setLast(null);
       setPill('ok', 'health ok');
