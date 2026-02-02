@@ -680,7 +680,7 @@
   function wireRailNav() {
     const dash = $('railDashboard');
     const rep = $('railReports');
-    const health = $('railHealth');
+    const health = $('railCompanion');
     if (dash) {
       dash.onclick = () => {
         const isReports = document.body && document.body.dataset && document.body.dataset.page === 'reports';
@@ -700,8 +700,8 @@
     }
     if (health) {
       health.onclick = () => {
-        const isHealth = document.body && document.body.dataset && document.body.dataset.page === 'health';
-        if (!isHealth) window.location.href = '/health';
+        const isHealth = document.body && document.body.dataset && document.body.dataset.page === companion;
+        if (!isHealth) window.location.href = '/companion';
       };
     }
   }
@@ -948,7 +948,7 @@
   async function refreshHealthChecklist() {
     try {
       setPill('run', 'checklist…');
-      const r = await api('/api/health/checklist', { dir: dirOrDefault() });
+      const r = await api('/api/companion/checklist', { dir: dirOrDefault() });
       if (r && r.needsInit) {
         setOut(r.error || 'Workspace not initialized');
         setPill('plan', 'needs init');
@@ -971,7 +971,7 @@
       if (sp) sp.textContent = dirOrDefault();
       setPill('run', 'health…');
       setOut('');
-      const r = await api('/api/health', { dir: dirOrDefault() });
+      const r = await api('/api/companion', { dir: dirOrDefault() });
       if (r && r.needsInit) {
         setOut(r.error || 'Workspace not initialized');
         setLast(null);
@@ -981,7 +981,7 @@
       setOut(r.output);
       setLast(null);
       setPill('ok', 'health ok');
-      if (isHealthPage) {
+      if (isCompanionPage) {
         refreshHealthChecklist();
       }
     } catch (e) {
@@ -1019,7 +1019,7 @@
       setLast(r.reportPath || null);
       if (r.reportText) state.lastText = r.reportText;
       await refreshReports({ selectLatest: true });
-      if (isHealthPage) {
+      if (isCompanionPage) {
         refreshHealthChecklist();
       }
       setPill('ok', name + ' ok');
@@ -1314,7 +1314,7 @@
   } catch {}
 
   const isReportsPage = document.body && document.body.dataset && document.body.dataset.page === 'reports';
-  const isHealthPage = document.body && document.body.dataset && document.body.dataset.page === 'health';
+  const isCompanionPage = document.body && document.body.dataset && document.body.dataset.page === companion;
 
   // Load persisted settings from the workspace + bootstrap (auto-init + auto-health)
   (async () => {
@@ -1342,7 +1342,7 @@
       return;
     }
 
-    if (isHealthPage) {
+    if (isCompanionPage) {
       await refreshHealthChecklist();
       return;
     }

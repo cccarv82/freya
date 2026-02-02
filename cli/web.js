@@ -877,9 +877,9 @@ function reportsHtml(defaultDir) {
   return buildReportsHtml(safeDefault, APP_VERSION);
 }
 
-function healthHtml(defaultDir) {
+function companionHtml(defaultDir) {
   const safeDefault = String(defaultDir || './freya').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-  return buildHealthHtml(safeDefault, APP_VERSION);
+  return buildCompanionHtml(safeDefault, APP_VERSION);
 }
 
 function buildHtml(safeDefault, appVersion) {
@@ -904,7 +904,7 @@ function buildHtml(safeDefault, appVersion) {
           <div class="railNav">
             <button class="railBtn active" id="railDashboard" type="button" title="Dashboard">D</button>
             <button class="railBtn" id="railReports" type="button" title="Relatórios">R</button>
-            <button class="railBtn" id="railHealth" type="button" title="Saude">H</button>
+            <button class="railBtn" id="railCompanion" type="button" title="Companion">C</button>
           </div>
           <div class="railBottom">
             <div class="railStatus" id="railStatus" title="status"></div>
@@ -1154,7 +1154,7 @@ function buildReportsHtml(safeDefault, appVersion) {
           <div class="railNav">
             <button class="railBtn" id="railDashboard" type="button" title="Dashboard">D</button>
             <button class="railBtn active" id="railReports" type="button" title="Relatórios">R</button>
-            <button class="railBtn" id="railHealth" type="button" title="Saude">H</button>
+            <button class="railBtn" id="railCompanion" type="button" title="Companion">C</button>
           </div>
           <div class="railBottom">
             <div class="railStatus" id="railStatus" title="status"></div>
@@ -1209,17 +1209,17 @@ function buildReportsHtml(safeDefault, appVersion) {
 </html>`
 }
 
-function buildHealthHtml(safeDefault, appVersion) {
+function buildCompanionHtml(safeDefault, appVersion) {
   const safeVersion = escapeHtml(appVersion || 'unknown');
   return `<!doctype html>
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>FREYA Health</title>
+  <title>Scrum Master Companion</title>
   <link rel="stylesheet" href="/app.css" />
 </head>
-<body data-page="health">
+<body data-page="companion">
   <div class="app">
     <div class="frame">
       <div class="shell">
@@ -1231,7 +1231,7 @@ function buildHealthHtml(safeDefault, appVersion) {
           <div class="railNav">
             <button class="railBtn" id="railDashboard" type="button" title="Dashboard">D</button>
             <button class="railBtn" id="railReports" type="button" title="Relatórios">R</button>
-            <button class="railBtn active" id="railHealth" type="button" title="Saude">H</button>
+            <button class="railBtn active" id="railCompanion" type="button" title="Companion">C</button>
           </div>
           <div class="railBottom">
             <div class="railStatus" id="railStatus" title="status"></div>
@@ -1244,7 +1244,7 @@ function buildHealthHtml(safeDefault, appVersion) {
               <span class="spark"></span>
               <div class="brandStack">
                 <div class="brand">FREYA</div>
-                <div class="brandSub">Checklist de Saude</div>
+                <div class="brandSub">Scrum Master Companion</div>
               </div>
             </div>
             <div class="topActions">
@@ -1258,13 +1258,11 @@ function buildHealthHtml(safeDefault, appVersion) {
 
             <section class="reportsHeader">
               <div>
-                <div class="reportsTitle">Checklist de Saude</div>
-                <div class="reportsSubtitle">Verificacoes rapidas antes de reunioes e rituais.</div>
+                <div class="reportsTitle">Scrum Master Companion</div>
+                <div class="reportsSubtitle">Painel rapido para gerar relatorios e checar pendencias.</div>
               </div>
               <div class="reportsActions">
-                <button class="btn small" type="button" onclick="refreshHealthChecklist()">Atualizar</button>
-                <button class="btn small" type="button" onclick="doHealth()">Rodar health</button>
-              </div>
+                <button class="btn small" type="button" onclick="refreshHealthChecklist()">Atualizar</button>              </div>
             </section>
 
             <section class="reportsTools" style="grid-template-columns: repeat(auto-fit,minmax(180px,1fr));">
@@ -1610,9 +1608,9 @@ async function cmdWeb({ port, dir, open, dev }) {
         return;
       }
 
-      if (req.method === 'GET' && req.url === '/health') {
+      if (req.method === 'GET' && req.url === '/companion') {
         try { res.__freyaDebug.workspaceDir = normalizeWorkspaceDir(dir || './freya'); } catch {}
-        const body = healthHtml(dir || './freya');
+        const body = companionHtml(dir || './freya');
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
         res.end(body);
         return;
@@ -2411,7 +2409,7 @@ async function cmdWeb({ port, dir, open, dev }) {
           return safeJson(res, 200, { ok: true, task: updated });
         }
 
-        if (req.url === '/api/health/checklist') {
+        if (req.url === '/api/companion/checklist') {
           if (!looksLikeFreyaWorkspace(workspaceDir)) {
             return safeJson(res, 200, { ok: false, needsInit: true, error: 'Workspace not initialized', items: [] });
           }
@@ -2429,8 +2427,7 @@ async function cmdWeb({ port, dir, open, dev }) {
           const reportsToday = reports.filter((r) => r && String(r.name || '').includes(today)).length;
 
           const items = [
-            { label: 'Workspace inicializada', status: 'ok', detail: 'ok' },
-            { label: 'Blockers abertos', status: openBlockers > 0 ? 'warn' : 'ok', detail: `${openBlockers} aberto(s)` },
+                        { label: 'Blockers abertos', status: openBlockers > 0 ? 'warn' : 'ok', detail: `${openBlockers} aberto(s)` },
             { label: 'Tarefas DO_NOW pendentes', status: pendingTasks > 0 ? 'warn' : 'ok', detail: `${pendingTasks} pendente(s)` },
             { label: 'Relatorios de hoje', status: reportsToday > 0 ? 'ok' : 'warn', detail: `${reportsToday} gerado(s)` }
           ];

@@ -2,8 +2,8 @@
    Keep this file plain CSS to avoid escaping issues in inline template literals. */
 
 :root {
-  --radius: 16px;
-  --radius2: 12px;
+  --radius: 0px;
+  --radius2: 0px;
   --shadow: 0 20px 60px rgba(16, 24, 40, .12);
   --shadow2: 0 10px 22px rgba(16, 24, 40, .10);
   --ring: 0 0 0 4px rgba(37, 99, 235, .18);
@@ -529,3 +529,6 @@ textarea:focus { box-shadow: var(--ring); border-color: rgba(45,212,191,.35); }
 .composerToggles { margin-top: 10px; display: grid; gap: 6px; }
 .toggleRow { display:flex; align-items:center; gap:10px; user-select:none; font-size: 12px; color: var(--muted); }
 .statusFooter { margin-top: 10px; display:flex; justify-content:flex-end; }
+
+
+* { border-radius: 0 !important; }
