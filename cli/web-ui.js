@@ -726,6 +726,10 @@
       card.innerHTML = '<div class="reportHead">'
         + '<div><div class="reportTitle">' + escapeHtml(it.title || 'Evento') + '</div>'
         + '<div class="reportMeta">' + escapeHtml(it.date || '') + ' · ' + escapeHtml(it.kind || '') + '</div></div>'
+        + '<div class="reportActions">'
+        + '<span class="pill info">' + escapeHtml(it.kind || '') + '</span>'
+        + (it.slug ? ('<span class="pill">' + escapeHtml(it.slug) + '</span>') : '')
+        + '</div>'
         + '</div>'
         + '<div class="help" style="margin-top:8px">' + escapeHtml(it.content || '') + '</div>';
       el.appendChild(card);
@@ -778,8 +782,12 @@
         for (const c of cards) {
           const card = document.createElement('div');
           card.className = 'reportCard';
+          const dateLine = c.body.find((b)=> b.toLowerCase().includes('data'));
+          const impactLine = c.body.find((b)=> b.toLowerCase().includes('descricao') || b.toLowerCase().includes('impacto'));
           card.innerHTML = '<div class="reportTitle">' + escapeHtml(c.title) + '</div>'
-            + c.body.map((b) => '<div class="help" style="margin-top:4px">' + escapeHtml(b) + '</div>').join('');
+            + (dateLine ? ('<div class="reportMeta">' + escapeHtml(dateLine) + '</div>') : '')
+            + (impactLine ? ('<div class="help" style="margin-top:4px">' + escapeHtml(impactLine) + '</div>') : '')
+            + c.body.filter((b)=> b!==dateLine && b!==impactLine).map((b) => '<div class="help" style="margin-top:4px">' + escapeHtml(b) + '</div>').join('');
           el.appendChild(card);
         }
       }
