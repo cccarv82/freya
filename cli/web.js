@@ -938,6 +938,11 @@ function companionHtml(defaultDir) {
   return buildCompanionHtml(safeDefault, APP_VERSION);
 }
 
+function timelineHtml(defaultDir) {
+  const safeDefault = String(defaultDir || './freya').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return buildTimelineHtml(safeDefault, APP_VERSION);
+}
+
 function buildHtml(safeDefault, appVersion) {
   const safeVersion = escapeHtml(appVersion || 'unknown');
   return `<!doctype html>
@@ -1961,7 +1966,7 @@ async function cmdWeb({ port, dir, open, dev }) {
 
       if (req.method === 'GET' && req.url === '/timeline') {
         try { res.__freyaDebug.workspaceDir = normalizeWorkspaceDir(dir || './freya'); } catch {}
-        const body = buildTimelineHtml(dir || './freya', version);
+        const body = timelineHtml(dir || './freya');
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
         res.end(body);
         return;
