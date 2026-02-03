@@ -1268,6 +1268,18 @@
     }
   }
 
+  async function refreshExecutiveSummary() {
+    const el = $('executiveSummary');
+    if (el) el.textContent = 'Carregando resumo...';
+    try {
+      const r = await api('/api/summary/executive', { dir: dirOrDefault() });
+      if (!el) return;
+      el.textContent = r.summary || 'Sem resumo disponível.';
+    } catch {
+      if (el) el.textContent = 'Falha ao carregar resumo.';
+    }
+  }
+
   async function doHealth() {
     try {
       saveLocal();
@@ -1660,6 +1672,7 @@
 
     if (isCompanionPage) {
       await refreshHealthChecklist();
+      await refreshExecutiveSummary();
       await refreshIncidents();
       await refreshHeatmap();
       return;
@@ -1711,6 +1724,7 @@
   window.setTimelineKind = setTimelineKind;
   window.refreshBlockersInsights = refreshBlockersInsights;
   window.refreshHealthChecklist = refreshHealthChecklist;
+  window.refreshExecutiveSummary = refreshExecutiveSummary;
   window.copyOut = copyOut;
   window.copyPath = copyPath;
   window.openSelected = openSelected;

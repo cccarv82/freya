@@ -1500,6 +1500,16 @@ function buildCompanionHtml(safeDefault, appVersion) {
             <section class="reportsGrid" id="healthChecklist"></section>
 
             <section class="panel" style="margin-top:16px">
+              <div class="panelHead" style="display:flex; align-items:center; justify-content:space-between; gap:10px">
+                <b>Resumo Executivo</b>
+                <button class="btn small" type="button" onclick="refreshExecutiveSummary()">Atualizar</button>
+              </div>
+              <div class="panelBody">
+                <div id="executiveSummary" class="help"></div>
+              </div>
+            </section>
+
+            <section class="panel" style="margin-top:16px">
               <div class="panelHead"><b>Incident Radar</b></div>
               <div class="panelBody">
                 <div id="incidentsBox" class="log md" style="font-family: var(--sans);"></div>
@@ -1675,6 +1685,62 @@ function readJsonOrNull(p) {
   } catch {
     return null;
   }
+}
+
+function truncateText(text, maxLen) {
+  const str = String(text || '').trim();
+  if (str.length <= maxLen) return str;
+  return str.slice(0, Math.max(0, maxLen - 3)).trimEnd() + '...';
+}
+
+function getTimelineItems(workspaceDir) {
+  const items = [];
+  const dailyDir = path.join(workspaceDir, 'logs', 'daily');
+  if (exists(dailyDir)) {
+    const files = fs.readdirSync(dailyDir).filter((f) => /^\d{4}-\d{2}-\d{2}\.md$/.test(f));
+    for (const f of files) {
+      const date = f.replace('.md', '');
+      const full = path.join(dailyDir, f);
+      const body = fs.readFileSync(full, 'utf8');
+      items.push({ kind: 'daily', date, title: `Daily ${date}`, content: body.slice(0, 500) });
+    }
+  }
+  const base = path.join(workspaceDir, 'data', 'Clients');
+  if (exists(base)) {
+    const stack = [base];
+    while (stack.length) {
+      const dirp = stack.pop();
+      const entries = fs.readdirSync(dirp, { withFileTypes: true });
+      for (const ent of entries) {
+        const full = path.join(dirp, ent.name);
+        if (ent.isDirectory()) stack.push(full);
+        else if (ent.isFile() && ent.name === 'status.json') {
+          const doc = readJsonOrNull(full) || {};
+          const slug = path.relative(base, path.dirname(full)).replace(/\\/g, '/');
+          const hist = Array.isArray(doc.history) ? doc.history : [];
+          for (const h of hist) {
+            items.push({
+              kind: 'status',
+              date: h.date || '',
+              title: `${doc.project || slug} (${h.type || 'Status'})`,
+              content: h.content || '',
+              tags: h.tags || [],
+              slug
+            });
+          }
+        }
+      }
+    }
+  }
+  const taskFile = path.join(workspaceDir, 'data', 'tasks', 'task-log.json');
+  const taskDoc = readJsonOrNull(taskFile) || { tasks: [] };
+  const tasks = Array.isArray(taskDoc.tasks) ? taskDoc.tasks : [];
+  for (const t of tasks) {
+    if (t.createdAt) items.push({ kind: 'task', date: String(t.createdAt).slice(0, 10), title: `Task criada: ${t.description || t.id}`, content: t.projectSlug || '' });
+    if (t.completedAt) items.push({ kind: 'task', date: String(t.completedAt).slice(0, 10), title: `Task concluida: ${t.description || t.id}`, content: t.projectSlug || '' });
+  }
+  items.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  return items;
 }
 
 function writeJson(p, obj) {
@@ -1991,53 +2057,49 @@ async function cmdWeb({ port, dir, open, dev }) {
         }
 
 if (req.url === '/api/timeline') {
-          const items = [];
-          const dailyDir = path.join(workspaceDir, 'logs', 'daily');
-          if (exists(dailyDir)) {
-            const files = fs.readdirSync(dailyDir).filter((f) => /^\d{4}-\d{2}-\d{2}\.md$/.test(f));
-            for (const f of files) {
-              const date = f.replace('.md', '');
-              const full = path.join(dailyDir, f);
-              const body = fs.readFileSync(full, 'utf8');
-              items.push({ kind: 'daily', date, title: `Daily ${date}`, content: body.slice(0, 500) });
-            }
-          }
-          const base = path.join(workspaceDir, 'data', 'Clients');
-          if (exists(base)) {
-            const stack = [base];
-            while (stack.length) {
-              const dirp = stack.pop();
-              const entries = fs.readdirSync(dirp, { withFileTypes: true });
-              for (const ent of entries) {
-                const full = path.join(dirp, ent.name);
-                if (ent.isDirectory()) stack.push(full);
-                else if (ent.isFile() && ent.name === 'status.json') {
-                  const doc = readJsonOrNull(full) || {};
-                  const slug = path.relative(base, path.dirname(full)).replace(/\\/g, '/');
-                  const hist = Array.isArray(doc.history) ? doc.history : [];
-                  for (const h of hist) {
-                    items.push({
-                      kind: 'status',
-                      date: h.date || '',
-                      title: `${doc.project || slug} (${h.type || 'Status'})`,
-                      content: h.content || '',
-                      tags: h.tags || [],
-                      slug
-                    });
-                  }
-                }
-              }
-            }
-          }
-          const taskFile = path.join(workspaceDir, 'data', 'tasks', 'task-log.json');
-          const taskDoc = readJsonOrNull(taskFile) || { tasks: [] };
-          const tasks = Array.isArray(taskDoc.tasks) ? taskDoc.tasks : [];
-          for (const t of tasks) {
-            if (t.createdAt) items.push({ kind: 'task', date: String(t.createdAt).slice(0, 10), title: `Task criada: ${t.description || t.id}`, content: t.projectSlug || '' });
-            if (t.completedAt) items.push({ kind: 'task', date: String(t.completedAt).slice(0, 10), title: `Task concluida: ${t.description || t.id}`, content: t.projectSlug || '' });
-          }
-          items.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+          const items = getTimelineItems(workspaceDir);
           return safeJson(res, 200, { ok: true, items });
+        }
+
+        if (req.url === '/api/summary/executive') {
+          const items = getTimelineItems(workspaceDir);
+          const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+          const recent = items.filter((it) => {
+            const ts = Date.parse(it.date || '');
+            return Number.isFinite(ts) && ts >= cutoff;
+          });
+          const counts = { status: 0, taskCreated: 0, taskCompleted: 0, daily: 0 };
+          for (const it of recent) {
+            if (it.kind === 'status') counts.status++;
+            else if (it.kind === 'daily') counts.daily++;
+            else if (it.kind === 'task' && String(it.title || '').toLowerCase().includes('concluida')) counts.taskCompleted++;
+            else if (it.kind === 'task') counts.taskCreated++;
+          }
+
+          const blockerFile = path.join(workspaceDir, 'data', 'blockers', 'blocker-log.json');
+          const blockerDoc = readJsonOrNull(blockerFile) || { blockers: [] };
+          const openBlockers = (blockerDoc.blockers || []).filter((b) => b && String(b.status || '').trim() === 'OPEN');
+
+          let summary = '';
+          if (!recent.length) {
+            summary = 'Sem eventos recentes na timeline nos últimos 7 dias.';
+          } else {
+            const parts = [];
+            if (counts.taskCompleted) parts.push(`${counts.taskCompleted} tarefa(s) concluida(s)`);
+            if (counts.taskCreated) parts.push(`${counts.taskCreated} tarefa(s) criada(s)`);
+            if (counts.status) parts.push(`${counts.status} update(s) de status`);
+            if (!parts.length && counts.daily) parts.push(`${counts.daily} daily(s)`);
+            const head = parts.length ? parts.join(', ') : `${recent.length} eventos`;
+            summary = `Resumo: ${head} nos últimos 7 dias.`;
+          }
+
+          const blockersSentence = openBlockers.length
+            ? `Há ${openBlockers.length} blocker(s) aberto(s).`
+            : 'Sem blockers abertos.';
+
+          summary = `${summary} ${blockersSentence}`.trim();
+          summary = truncateText(summary, 260);
+          return safeJson(res, 200, { ok: true, summary, stats: { recent: recent.length, openBlockers: openBlockers.length, ...counts } });
         }
 
         if (req.url === '/api/incidents/resolve') {
