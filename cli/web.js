@@ -255,6 +255,48 @@ function splitForDiscord(text, limit = 1900) {
   return parts;
 }
 
+function parseIncidentMarkdown(md) {
+  const lines = String(md || '').split(/\r?\n/);
+  const items = [];
+  let current = null;
+  for (const line of lines) {
+    if (line.startsWith('- **')) {
+      if (current) items.push(current);
+      current = { title: line.replace('- **', '').replace('**', '').trim(), body: [] };
+      continue;
+    }
+    if (current && line.trim().startsWith('- ')) {
+      current.body.push(line.trim().replace(/^- /, ''));
+    }
+  }
+  if (current) items.push(current);
+  return items;
+}
+
+function serializeIncidentMarkdown(items) {
+  return (items || []).map((it) => {
+    const body = Array.isArray(it.body) ? it.body : [];
+    const lines = ['- **' + (it.title || 'Incidente') + '**'];
+    for (const b of body) lines.push('- ' + b);
+    return lines.join('\n');
+  }).join('\n');
+}
+
+function resolveIncidentInMarkdown(md, title, index) {
+  const items = parseIncidentMarkdown(md);
+  const matches = items.map((it, i) => ({ it, i })).filter((x) => x.it.title === title);
+  if (!matches.length) return null;
+  const pick = typeof index === 'number' && Number.isInteger(index) ? matches[index] : matches[0];
+  if (!pick) return null;
+  const entry = pick.it;
+  const body = Array.isArray(entry.body) ? entry.body : [];
+  const statusIdx = body.findIndex((b) => /^status\s*:/i.test(b));
+  if (statusIdx >= 0) body[statusIdx] = 'Status: resolved';
+  else body.push('Status: resolved');
+  entry.body = body;
+  return serializeIncidentMarkdown(items);
+}
+
 function postJson(url, bodyObj) {
   return new Promise((resolve, reject) => {
     const u = new URL(url);
@@ -1989,6 +2031,19 @@ if (req.url === '/api/timeline') {
           return safeJson(res, 200, { ok: true, items });
         }
 
+        if (req.url === '/api/incidents/resolve') {
+          const title = payload.title;
+          const index = Number.isInteger(payload.index) ? payload.index : null;
+          if (!title) return safeJson(res, 400, { error: 'Missing title' });
+          const p = path.join(workspaceDir, 'docs', 'reports', 'fidelizacao-incident-index.md');
+          if (!exists(p)) return safeJson(res, 404, { error: 'Incident index not found' });
+          const md = fs.readFileSync(p, 'utf8');
+          const updated = resolveIncidentInMarkdown(md, title, index);
+          if (!updated) return safeJson(res, 404, { error: 'Incident not found' });
+          fs.writeFileSync(p, updated, 'utf8');
+          return safeJson(res, 200, { ok: true });
+        }
+
         if (req.url === '/api/incidents') {
           const p = path.join(workspaceDir, 'docs', 'reports', 'fidelizacao-incident-index.md');
           if (!exists(p)) return safeJson(res, 200, { ok: true, markdown: '' });
@@ -2791,6 +2846,19 @@ if (req.url === '/api/reports/list') {
           ];
 
           return safeJson(res, 200, { ok: true, items, stats: { pendingTasks, openBlockers, reportsToday, reportsTotal: reports.length } });
+        }
+
+        if (req.url === '/api/incidents/resolve') {
+          const title = payload.title;
+          const index = Number.isInteger(payload.index) ? payload.index : null;
+          if (!title) return safeJson(res, 400, { error: 'Missing title' });
+          const p = path.join(workspaceDir, 'docs', 'reports', 'fidelizacao-incident-index.md');
+          if (!exists(p)) return safeJson(res, 404, { error: 'Incident index not found' });
+          const md = fs.readFileSync(p, 'utf8');
+          const updated = resolveIncidentInMarkdown(md, title, index);
+          if (!updated) return safeJson(res, 404, { error: 'Incident not found' });
+          fs.writeFileSync(p, updated, 'utf8');
+          return safeJson(res, 200, { ok: true });
         }
 
         if (req.url === '/api/incidents') {

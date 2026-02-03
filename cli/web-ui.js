@@ -844,15 +844,54 @@
         if (current) cards.push(current);
         el.innerHTML = '';
         if (!cards.length) { el.innerHTML = renderMarkdown(md); return; }
-        for (const c of cards) {
+        for (let idx = 0; idx < cards.length; idx++) {
+          const c = cards[idx];
           const card = document.createElement('div');
           card.className = 'reportCard';
           const dateLine = c.body.find((b)=> b.toLowerCase().includes('data'));
           const impactLine = c.body.find((b)=> b.toLowerCase().includes('descricao') || b.toLowerCase().includes('impacto'));
+          const statusLine = c.body.find((b)=> /^status\s*:/i.test(b));
+          const statusRaw = statusLine ? statusLine.split(':').slice(1).join(':').trim().toLowerCase() : '';
+          let statusKey = '';
+          if (['open', 'aberto', 'aberta'].includes(statusRaw)) statusKey = 'open';
+          else if (['mitigating', 'mitigando', 'mitigacao', 'mitigação'].includes(statusRaw)) statusKey = 'mitigating';
+          else if (['resolved', 'resolvido', 'resolvida', 'closed', 'fechado', 'fechada'].includes(statusRaw)) statusKey = 'resolved';
+
           card.innerHTML = '<div class="reportTitle">' + escapeHtml(c.title) + '</div>'
             + (dateLine ? ('<div class="reportMeta">' + escapeHtml(dateLine) + '</div>') : '')
             + (impactLine ? ('<div class="help" style="margin-top:4px">' + escapeHtml(impactLine) + '</div>') : '')
-            + c.body.filter((b)=> b!==dateLine && b!==impactLine).map((b) => '<div class="help" style="margin-top:4px">' + escapeHtml(b) + '</div>').join('');
+            + c.body.filter((b)=> b!==dateLine && b!==impactLine && b!==statusLine).map((b) => '<div class="help" style="margin-top:4px">' + escapeHtml(b) + '</div>').join('');
+
+          if (statusKey) {
+            const actions = document.createElement('div');
+            actions.className = 'reportActions';
+            actions.style.display = 'flex';
+            actions.style.gap = '8px';
+            actions.style.marginTop = '8px';
+            actions.style.flexWrap = 'wrap';
+
+            const label = statusKey === 'open' ? 'aberto' : (statusKey === 'mitigating' ? 'mitigando' : 'resolvido');
+            const pillClass = statusKey === 'resolved' ? 'ok' : (statusKey === 'mitigating' ? 'info' : 'warn');
+            const pill = document.createElement('span');
+            pill.className = 'pill ' + pillClass;
+            pill.textContent = label;
+            actions.appendChild(pill);
+
+            if (statusKey !== 'resolved') {
+              const btn = document.createElement('button');
+              btn.className = 'btn small';
+              btn.type = 'button';
+              btn.textContent = 'Marcar resolvido';
+              btn.onclick = async () => {
+                await api('/api/incidents/resolve', { dir: dirOrDefault(), title: c.title, index: idx });
+                await refreshIncidents();
+              };
+              actions.appendChild(btn);
+            }
+
+            card.appendChild(actions);
+          }
+
           el.appendChild(card);
         }
       }
