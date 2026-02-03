@@ -2,23 +2,34 @@
 
 > **Sua Assistente de Produtividade Local-First no navegador.**
 
-F.R.E.Y.A. é um sistema de agentes de IA projetado para organizar seu trabalho, gerenciar status de projetos, rastrear tarefas e registrar sua evolução de carreira, tudo através de uma interface de chat simples e direta no navegador.
+F.R.E.Y.A. é um sistema de agentes de IA projetado para organizar seu trabalho, gerenciar status de projetos, rastrear tarefas e registrar sua evolução de carreira, tudo através de uma interface web local no navegador.
 
 ## 🌟 Principais Recursos
 
+*   **Web local (apenas navegador):** Acesso 100% via UI web local, sem app desktop e sem cloud.
 *   **Ingestão Universal:** Registre updates, blockers e notas mentais em linguagem natural.
 *   **Gestão de Tarefas:** Crie, liste e conclua tarefas ("Lembre-me de fazer X", "Minhas tarefas", "Terminei X").
+*   **Timeline + Projetos:** Linha do tempo com filtros por tag, projeto e tipo, além de listagem de projetos.
+*   **Companion Panels:** Painel rápido com qualidade de log, resumo executivo, anomalias e resumo de risco.
+*   **Incident Radar:** Card de incidentes com status e ação de “marcar resolvido”.
+*   **Task Heatmap:** Visão por projeto com prioridade, contadores e link direto para status.
+*   **Relatórios Automatizados:** Gere resumos semanais, dailies, relatório de Scrum Master e relatórios executivos.
 *   **Oráculo:** Pergunte sobre o status de qualquer projeto ("Como está o projeto X?") e recupere logs diários ("O que anotei ontem?").
 *   **Career Coach:** Gere "Brag Sheets" automáticas para suas avaliações de desempenho.
-*   **Relatórios Automatizados:** Gere resumos semanais, dailies, relatório de Scrum Master e relatórios executivos.
-*   **Blockers & Riscos:** Gere um relatório rápido de blockers priorizados por severidade.
+*   **Links Bidirecionais:** Auto-link entre notas, tarefas e projetos (compatível com Obsidian).
 *   **Saúde do Sistema:** Valide a integridade dos seus dados locais com um comando.
 *   **Git Automation:** Gere commits inteligentes automaticamente. A Freya analisa suas mudanças e escreve a mensagem para você.
 *   **Privacidade Total:** Seus dados (JSON e Markdown) ficam 100% locais na sua máquina.
 
 ## 📦 Instalação (Web UI)
 
-A FREYA agora roda como um app web local. Basta iniciar o servidor e abrir o navegador.
+FREYA web
+
+A FREYA roda como um app web local. Basta iniciar o servidor e abrir o navegador.
+
+```bash
+npx @cccarv82/freya@latest --no-open --port 3872
+```
 
 ## 🚢 Publicação no npm (maintainers)
 
