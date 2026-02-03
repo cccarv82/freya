@@ -2072,19 +2072,42 @@ if (req.url === '/api/reports/list') {
 
         function autoLinkNotes(textInput) {
           try {
+            const lc = textInput.toLowerCase();
             const projectsDir = path.join(workspaceDir, 'docs', 'projects');
-            if (!exists(projectsDir)) return '';
-            const files = fs.readdirSync(projectsDir).filter((f) => f.endsWith('.md'));
             const links = [];
-            for (const f of files) {
-              const name = f.replace('.md', '');
-              const slug = name.toLowerCase();
-              if (textInput.toLowerCase().includes(slug)) links.push(`[[${name}]]`);
-            }
-            if (!links.length) return '';
-            return `
 
-Links: ${links.join(' ')}`;
+            if (exists(projectsDir)) {
+              const files = fs.readdirSync(projectsDir).filter((f) => f.endsWith('.md'));
+              for (const f of files) {
+                const name = f.replace('.md', '');
+                const full = path.join(projectsDir, f);
+                const txt = fs.readFileSync(full, 'utf8');
+                const m = txt.match(/DataPath:\s*data\/Clients\/(.+?)\//i);
+                const slug = m ? m[1].toLowerCase() : name.toLowerCase();
+                if (lc.includes(slug)) links.push('[[' + name + ']]');
+              }
+            }
+
+            const base = path.join(workspaceDir, 'data', 'Clients');
+            if (exists(base)) {
+              const stack = [base];
+              while (stack.length) {
+                const dirp = stack.pop();
+                const entries = fs.readdirSync(dirp, { withFileTypes: true });
+                for (const ent of entries) {
+                  const full = path.join(dirp, ent.name);
+                  if (ent.isDirectory()) stack.push(full);
+                  else if (ent.isFile() && ent.name === 'status.json') {
+                    const slug = path.relative(base, path.dirname(full)).replace(/\\/g, '/').toLowerCase();
+                    if (lc.includes(slug)) links.push('[[' + slug + ']]');
+                  }
+                }
+              }
+            }
+
+            const uniq = Array.from(new Set(links));
+            if (!uniq.length) return '';
+            return '\n\nLinks: ' + uniq.join(' ');
           } catch {
             return '';
           }
