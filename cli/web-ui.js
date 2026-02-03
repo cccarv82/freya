@@ -663,6 +663,7 @@
     const items = Array.isArray(state.projects) ? state.projects : [];
     const filtered = items.filter((p) => {
       const hay = [p.client, p.program, p.stream, p.project, p.slug, (p.tags||[]).join(' ')].join(' ').toLowerCase();
+      if (kind !== 'all' && String(i.kind||'') !== kind) return false;
       return !filter || hay.includes(filter);
     });
     el.innerHTML = '';
@@ -703,12 +704,23 @@
     if (!el) return;
     const filter = String(($('timelineFilter') && $('timelineFilter').value) || '').toLowerCase();
     const items = Array.isArray(state.timeline) ? state.timeline : [];
+    const kind = state.timelineKind || 'all';
     const filtered = items.filter((i) => {
       const hay = [i.kind, i.title, i.content, (i.tags || []).join(' ')].join(' ').toLowerCase();
       return !filter || hay.includes(filter);
     });
     el.innerHTML = '';
+    let currentDate = null;
     for (const it of filtered) {
+      if (it.date && it.date !== currentDate) {
+        currentDate = it.date;
+        const head = document.createElement('div');
+        head.className = 'help';
+        head.style.fontWeight = '800';
+        head.style.marginTop = '6px';
+        head.textContent = currentDate;
+        el.appendChild(head);
+      }
       const card = document.createElement('div');
       card.className = 'reportCard';
       card.innerHTML = '<div class="reportHead">'
@@ -724,6 +736,11 @@
       empty.textContent = 'Nenhum evento encontrado.';
       el.appendChild(empty);
     }
+  }
+
+  function setTimelineKind(kind) {
+    state.timelineKind = kind;
+    renderTimeline();
   }
 
   async function refreshTimeline() {
@@ -743,12 +760,38 @@
       const el = $('incidentsBox');
       if (el) {
         const md = r.markdown || '';
-        el.innerHTML = md ? renderMarkdown(md) : '<div class="help">Nenhum incidente registrado.</div>';
+        if (!md) { el.innerHTML = '<div class="help">Nenhum incidente registrado.</div>'; return; }
+        const lines = md.split(/\n/);
+        const cards = [];
+        let current = null;
+        for (const line of lines) {
+          if (line.startsWith('- **')) {
+            if (current) cards.push(current);
+            current = { title: line.replace('- **', '').replace('**', '').trim(), body: [] };
+          } else if (current && line.trim().startsWith('- ')) {
+            current.body.push(line.trim().replace(/^- /, ''));
+          }
+        }
+        if (current) cards.push(current);
+        el.innerHTML = '';
+        if (!cards.length) { el.innerHTML = renderMarkdown(md); return; }
+        for (const c of cards) {
+          const card = document.createElement('div');
+          card.className = 'reportCard';
+          card.innerHTML = '<div class="reportTitle">' + escapeHtml(c.title) + '</div>'
+            + c.body.map((b) => '<div class="help" style="margin-top:4px">' + escapeHtml(b) + '</div>').join('');
+          el.appendChild(card);
+        }
       }
     } catch {
       const el = $('incidentsBox');
       if (el) el.textContent = 'Falha ao carregar incidentes.';
     }
+  }
+
+  function setHeatmapSort(sort) {
+    state.heatmapSort = sort;
+    refreshHeatmap();
   }
 
   async function refreshHeatmap() {
@@ -757,7 +800,9 @@
       const el = $('heatmapGrid');
       if (!el) return;
       el.innerHTML = '';
-      const items = r.items || [];
+      let items = r.items || [];
+      const sort = state.heatmapSort || 'pending';
+      items = items.slice().sort((a,b)=> (b[sort]||0) - (a[sort]||0));
       for (const it of items) {
         const row = document.createElement('div');
         row.className = 'rep';
@@ -1540,6 +1585,8 @@
   window.refreshTimeline = refreshTimeline;
   window.refreshIncidents = refreshIncidents;
   window.refreshHeatmap = refreshHeatmap;
+  window.setHeatmapSort = setHeatmapSort;
+  window.setTimelineKind = setTimelineKind;
   window.refreshBlockersInsights = refreshBlockersInsights;
   window.refreshHealthChecklist = refreshHealthChecklist;
   window.copyOut = copyOut;
