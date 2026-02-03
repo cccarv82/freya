@@ -297,6 +297,15 @@ function resolveIncidentInMarkdown(md, title, index) {
   return serializeIncidentMarkdown(items);
 }
 
+function normalizePriority(value) {
+  const raw = String(value || '').trim().toLowerCase();
+  if (!raw) return '';
+  if (['high', 'alta', 'alto', 'critical', 'critico', 'crítico'].includes(raw)) return 'high';
+  if (['medium', 'media', 'médio', 'medio'].includes(raw)) return 'medium';
+  if (['low', 'baixa', 'baixo'].includes(raw)) return 'low';
+  return '';
+}
+
 function postJson(url, bodyObj) {
   return new Promise((resolve, reject) => {
     const u = new URL(url);
@@ -2056,13 +2065,20 @@ if (req.url === '/api/timeline') {
           const doc = readJsonOrNull(file) || { tasks: [] };
           const tasks = Array.isArray(doc.tasks) ? doc.tasks : [];
           const map = {};
+          const priorityRank = { high: 3, medium: 2, low: 1, '': 0 };
           for (const t of tasks) {
             const slug = t.projectSlug || 'unassigned';
-            if (!map[slug]) map[slug] = { total: 0, pending: 0, completed: 0 };
+            if (!map[slug]) map[slug] = { total: 0, pending: 0, completed: 0, priority: '' };
             map[slug].total++;
             if (t.status === 'COMPLETED') map[slug].completed++; else map[slug].pending++;
+            const p = normalizePriority(t.priority || t.severity);
+            if (priorityRank[p] > priorityRank[map[slug].priority || '']) map[slug].priority = p;
           }
-          const items = Object.entries(map).map(([slug, v]) => ({ slug, ...v }));
+          const items = Object.entries(map).map(([slug, v]) => {
+            const statusPath = path.join(workspaceDir, 'data', 'Clients', slug, 'status.json');
+            const linkRel = exists(statusPath) ? path.relative(workspaceDir, statusPath).replace(/\\/g, '/') : '';
+            return { slug, ...v, linkRel };
+          });
           items.sort((a, b) => b.total - a.total);
           return safeJson(res, 200, { ok: true, items });
         }
@@ -2873,13 +2889,20 @@ if (req.url === '/api/reports/list') {
           const doc = readJsonOrNull(file) || { tasks: [] };
           const tasks = Array.isArray(doc.tasks) ? doc.tasks : [];
           const map = {};
+          const priorityRank = { high: 3, medium: 2, low: 1, '': 0 };
           for (const t of tasks) {
             const slug = t.projectSlug || 'unassigned';
-            if (!map[slug]) map[slug] = { total: 0, pending: 0, completed: 0 };
+            if (!map[slug]) map[slug] = { total: 0, pending: 0, completed: 0, priority: '' };
             map[slug].total++;
             if (t.status === 'COMPLETED') map[slug].completed++; else map[slug].pending++;
+            const p = normalizePriority(t.priority || t.severity);
+            if (priorityRank[p] > priorityRank[map[slug].priority || '']) map[slug].priority = p;
           }
-          const items = Object.entries(map).map(([slug, v]) => ({ slug, ...v }));
+          const items = Object.entries(map).map(([slug, v]) => {
+            const statusPath = path.join(workspaceDir, 'data', 'Clients', slug, 'status.json');
+            const linkRel = exists(statusPath) ? path.relative(workspaceDir, statusPath).replace(/\\/g, '/') : '';
+            return { slug, ...v, linkRel };
+          });
           items.sort((a, b) => b.total - a.total);
           return safeJson(res, 200, { ok: true, items });
         }

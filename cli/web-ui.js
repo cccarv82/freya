@@ -918,10 +918,20 @@
       for (const it of items) {
         const row = document.createElement('div');
         row.className = 'rep';
+        const priority = String(it.priority || '').toLowerCase();
+        const pill = priority ? ('<span class="pill ' + (priority === 'high' ? 'warn' : (priority === 'medium' ? 'info' : '')) + '">' + escapeHtml(priority) + '</span>') : '';
+        const action = it.linkRel ? ('<button class="btn small" type="button" data-link="' + escapeHtml(it.linkRel) + '">Abrir status</button>') : '';
         row.innerHTML = '<div style="display:flex; justify-content:space-between; gap:10px; align-items:center">'
           + '<div style="min-width:0"><div style="font-weight:800">' + escapeHtml(it.slug || 'unassigned') + '</div>'
           + '<div class="help" style="margin-top:4px">Total: ' + escapeHtml(String(it.total)) + ' · Pendentes: ' + escapeHtml(String(it.pending)) + ' · Concluidas: ' + escapeHtml(String(it.completed)) + '</div></div>'
+          + '<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">' + pill + action + '</div>'
           + '</div>';
+        const btn = row.querySelector('button[data-link]');
+        if (btn) {
+          btn.onclick = async () => {
+            await api('/api/reports/open', { dir: dirOrDefault(), relPath: btn.getAttribute('data-link') });
+          };
+        }
         el.appendChild(row);
       }
       if (!items.length) {
