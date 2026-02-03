@@ -1280,6 +1280,40 @@
     }
   }
 
+  async function refreshAnomalies() {
+    const el = $('anomaliesBox');
+    if (el) el.innerHTML = '<div class="help">Carregando anomalias...</div>';
+    try {
+      const r = await api('/api/anomalies', { dir: dirOrDefault() });
+      if (!el) return;
+      const anomalies = (r && r.anomalies) ? r.anomalies : {};
+      const tasksMissing = anomalies.tasksMissingProject || { count: 0, samples: [] };
+      const statusMissing = anomalies.statusMissingHistory || { count: 0, samples: [] };
+
+      const rows = [];
+      const pushRow = (label, data) => {
+        const status = data.count > 0 ? 'warn' : 'ok';
+        const samples = (data.samples || []).slice(0, 5).map((s) => `<div class=\"help\" style=\"margin-top:4px\">${escapeHtml(s)}</div>`).join('');
+        rows.push(
+          `<div class=\"rep\">`
+          + `<div style=\"display:flex; justify-content:space-between; gap:10px; align-items:center\">`
+          + `<div style=\"min-width:0\"><div style=\"font-weight:800\">${escapeHtml(label)}</div>`
+          + `<div class=\"help\" style=\"margin-top:4px\">${data.count} ocorrência(s)</div>`
+          + `${samples}</div>`
+          + `<div class=\"pill ${status}\">${status}</div>`
+          + `</div>`
+          + `</div>`
+        );
+      };
+
+      pushRow('Tarefas sem projectSlug', tasksMissing);
+      pushRow('Status sem history', statusMissing);
+      el.innerHTML = rows.join('') || '<div class="help">Sem anomalias.</div>';
+    } catch {
+      if (el) el.innerHTML = '<div class="help">Falha ao carregar anomalias.</div>';
+    }
+  }
+
   async function doHealth() {
     try {
       saveLocal();
@@ -1673,6 +1707,7 @@
     if (isCompanionPage) {
       await refreshHealthChecklist();
       await refreshExecutiveSummary();
+      await refreshAnomalies();
       await refreshIncidents();
       await refreshHeatmap();
       return;
@@ -1725,6 +1760,7 @@
   window.refreshBlockersInsights = refreshBlockersInsights;
   window.refreshHealthChecklist = refreshHealthChecklist;
   window.refreshExecutiveSummary = refreshExecutiveSummary;
+  window.refreshAnomalies = refreshAnomalies;
   window.copyOut = copyOut;
   window.copyPath = copyPath;
   window.openSelected = openSelected;

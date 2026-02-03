@@ -1510,6 +1510,16 @@ function buildCompanionHtml(safeDefault, appVersion) {
             </section>
 
             <section class="panel" style="margin-top:16px">
+              <div class="panelHead" style="display:flex; align-items:center; justify-content:space-between; gap:10px">
+                <b>Anomalias</b>
+                <button class="btn small" type="button" onclick="refreshAnomalies()">Atualizar</button>
+              </div>
+              <div class="panelBody">
+                <div id="anomaliesBox"></div>
+              </div>
+            </section>
+
+            <section class="panel" style="margin-top:16px">
               <div class="panelHead"><b>Incident Radar</b></div>
               <div class="panelBody">
                 <div id="incidentsBox" class="log md" style="font-family: var(--sans);"></div>
@@ -2100,6 +2110,52 @@ if (req.url === '/api/timeline') {
           summary = `${summary} ${blockersSentence}`.trim();
           summary = truncateText(summary, 260);
           return safeJson(res, 200, { ok: true, summary, stats: { recent: recent.length, openBlockers: openBlockers.length, ...counts } });
+        }
+
+        if (req.url === '/api/anomalies') {
+          const anomalies = {
+            tasksMissingProject: { count: 0, samples: [] },
+            statusMissingHistory: { count: 0, samples: [] }
+          };
+
+          const taskFile = path.join(workspaceDir, 'data', 'tasks', 'task-log.json');
+          if (exists(taskFile)) {
+            const taskDoc = readJsonOrNull(taskFile) || { tasks: [] };
+            const tasks = Array.isArray(taskDoc.tasks) ? taskDoc.tasks : [];
+            for (const t of tasks) {
+              const slug = String(t.projectSlug || '').trim();
+              if (!slug) {
+                anomalies.tasksMissingProject.count++;
+                if (anomalies.tasksMissingProject.samples.length < 5) {
+                  anomalies.tasksMissingProject.samples.push(`data/tasks/task-log.json::${t.id || t.description || 'task'}`);
+                }
+              }
+            }
+          }
+
+          const base = path.join(workspaceDir, 'data', 'Clients');
+          if (exists(base)) {
+            const stack = [base];
+            while (stack.length) {
+              const dirp = stack.pop();
+              const entries = fs.readdirSync(dirp, { withFileTypes: true });
+              for (const ent of entries) {
+                const full = path.join(dirp, ent.name);
+                if (ent.isDirectory()) stack.push(full);
+                else if (ent.isFile() && ent.name === 'status.json') {
+                  const doc = readJsonOrNull(full) || {};
+                  if (!Array.isArray(doc.history)) {
+                    anomalies.statusMissingHistory.count++;
+                    if (anomalies.statusMissingHistory.samples.length < 5) {
+                      anomalies.statusMissingHistory.samples.push(path.relative(workspaceDir, full).replace(/\\/g, '/'));
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          return safeJson(res, 200, { ok: true, anomalies });
         }
 
         if (req.url === '/api/incidents/resolve') {
