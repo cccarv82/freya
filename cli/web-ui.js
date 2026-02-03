@@ -665,7 +665,6 @@
     const items = Array.isArray(state.projects) ? state.projects : [];
     const filtered = items.filter((p) => {
       const hay = [p.client, p.program, p.stream, p.project, p.slug, (p.tags||[]).join(' ')].join(' ').toLowerCase();
-      if (kind !== 'all' && String(i.kind||'') !== kind) return false;
       return !filter || hay.includes(filter);
     });
     el.innerHTML = '';

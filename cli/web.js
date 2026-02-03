@@ -1961,7 +1961,7 @@ async function cmdWeb({ port, dir, open, dev }) {
 
       if (req.method === 'GET' && req.url === '/timeline') {
         try { res.__freyaDebug.workspaceDir = normalizeWorkspaceDir(dir || './freya'); } catch {}
-        const body = timelineHtml(dir || './freya');
+        const body = buildTimelineHtml(dir || './freya', version);
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
         res.end(body);
         return;
