@@ -2269,6 +2269,7 @@ if (req.url === '/api/reports/list') {
             const lc = textInput.toLowerCase();
             const projectsDir = path.join(workspaceDir, 'docs', 'projects');
             const links = [];
+            const slugs = [];
 
             if (exists(projectsDir)) {
               const files = fs.readdirSync(projectsDir).filter((f) => f.endsWith('.md'));
@@ -2278,7 +2279,10 @@ if (req.url === '/api/reports/list') {
                 const txt = fs.readFileSync(full, 'utf8');
                 const m = txt.match(/DataPath:\s*data\/Clients\/(.+?)\//i);
                 const slug = m ? m[1].toLowerCase() : name.toLowerCase();
-                if (lc.includes(slug)) links.push('[[' + name + ']]');
+                if (lc.includes(slug)) {
+                  links.push('[[' + name + ']]');
+                  slugs.push(slug);
+                }
               }
             }
 
@@ -2293,17 +2297,21 @@ if (req.url === '/api/reports/list') {
                   if (ent.isDirectory()) stack.push(full);
                   else if (ent.isFile() && ent.name === 'status.json') {
                     const slug = path.relative(base, path.dirname(full)).replace(/\\/g, '/').toLowerCase();
-                    if (lc.includes(slug)) links.push('[[' + slug + ']]');
+                    if (lc.includes(slug)) {
+                      links.push('[[' + slug + ']]');
+                      slugs.push(slug);
+                    }
                   }
                 }
               }
             }
 
-            const uniq = Array.from(new Set(links));
-            if (!uniq.length) return '';
-            return '\n\nLinks: ' + uniq.join(' ');
+            const uniqLinks = Array.from(new Set(links));
+            const uniqSlugs = Array.from(new Set(slugs));
+            const linksText = uniqLinks.length ? ('\n\nLinks: ' + uniqLinks.join(' ')) : '';
+            return { linksText, slugs: uniqSlugs };
           } catch {
-            return '';
+            return { linksText: '', slugs: [] };
           }
         }
 
@@ -2319,8 +2327,32 @@ if (req.url === '/api/reports/list') {
           const hh = String(stamp.getHours()).padStart(2, '0');
           const mm = String(stamp.getMinutes()).padStart(2, '0');
 
-          const block = `\n\n## [${hh}:${mm}] Raw Input\n${text}\n`;
+          const linkInfo = autoLinkNotes(text);
+          const linksText = linkInfo && linkInfo.linksText ? linkInfo.linksText : '';
+          const slugs = linkInfo && Array.isArray(linkInfo.slugs) ? linkInfo.slugs : [];
+
+          const block = `\n\n## [${hh}:${mm}] Raw Input\n${text}${linksText}\n`;
           fs.appendFileSync(file, block, 'utf8');
+
+          if (slugs.length) {
+            const logRel = path.relative(workspaceDir, file).replace(/\\/g, '/');
+            const stampText = `${d} ${hh}:${mm}`;
+            for (const slug of slugs) {
+              const statusPath = path.join(workspaceDir, 'data', 'Clients', slug, 'status.json');
+              if (!exists(statusPath)) continue;
+              const doc = readJsonOrNull(statusPath) || { history: [] };
+              if (!Array.isArray(doc.history)) doc.history = [];
+              const already = doc.history.some((h) => h && (String(h.source || '').includes(logRel) || String(h.content || '').includes(logRel)));
+              if (already) continue;
+              doc.history.push({
+                date: isoNow(),
+                type: 'Log',
+                content: `Log entry ${stampText} (${logRel})`,
+                source: logRel
+              });
+              writeJson(statusPath, doc);
+            }
+          }
 
           return safeJson(res, 200, { ok: true, file: path.relative(workspaceDir, file).replace(/\\/g, '/'), appended: true });
         }
