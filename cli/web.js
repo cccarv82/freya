@@ -1360,6 +1360,11 @@ function buildTimelineHtml(safeDefault, appVersion) {
               <input id=\"timelineFilter\" placeholder=\"filtrar (tag, projeto, tipo)\" oninput=\"renderTimeline()\" />
             </section>
 
+            <section class=\"reportsTools\" style=\"display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px;\">
+              <select id=\"timelineProject\" onchange=\"setTimelineProject(this.value)\"></select>
+              <select id=\"timelineTag\" onchange=\"setTimelineTag(this.value)\"></select>
+            </section>
+
             <section class=\"reportsGrid\" id=\"timelineGrid\"></section>
           </div>
         </main>

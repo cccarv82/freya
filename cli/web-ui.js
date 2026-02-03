@@ -17,6 +17,8 @@
     autoApply: true,
     autoRunReports: false,
     prettyPublish: true,
+    timelineProject: '',
+    timelineTag: '',
     chatSessionId: null,
     chatLoaded: false
   };
@@ -705,8 +707,61 @@
     const filter = String(($('timelineFilter') && $('timelineFilter').value) || '').toLowerCase();
     const items = Array.isArray(state.timeline) ? state.timeline : [];
     const kind = state.timelineKind || 'all';
+    const projectSelect = $('timelineProject');
+    const tagSelect = $('timelineTag');
+    const getItemSlug = (it) => {
+      if (!it) return '';
+      if (it.slug) return String(it.slug);
+      if (it.kind === 'task' && it.content) return String(it.content);
+      return '';
+    };
+    const collectTimelineOptions = (list) => {
+      const slugs = new Set();
+      const tags = new Set();
+      for (const it of list) {
+        const slug = getItemSlug(it);
+        if (slug) slugs.add(slug);
+        const itTags = Array.isArray(it.tags) ? it.tags : [];
+        for (const tag of itTags) {
+          const cleaned = String(tag || '').trim();
+          if (cleaned) tags.add(cleaned);
+        }
+      }
+      return {
+        slugs: Array.from(slugs).sort((a, b) => a.localeCompare(b)),
+        tags: Array.from(tags).sort((a, b) => a.localeCompare(b))
+      };
+    };
+    const syncSelect = (selectEl, options, selected, placeholder) => {
+      if (!selectEl) return selected;
+      const nextSelected = options.includes(selected) ? selected : '';
+      selectEl.innerHTML = '';
+      const allOpt = document.createElement('option');
+      allOpt.value = '';
+      allOpt.textContent = placeholder;
+      selectEl.appendChild(allOpt);
+      for (const opt of options) {
+        const optionEl = document.createElement('option');
+        optionEl.value = opt;
+        optionEl.textContent = opt;
+        selectEl.appendChild(optionEl);
+      }
+      selectEl.value = nextSelected;
+      return nextSelected;
+    };
+    const options = collectTimelineOptions(items);
+    const selectedProject = syncSelect(projectSelect, options.slugs, state.timelineProject || '', 'Todos projetos');
+    const selectedTag = syncSelect(tagSelect, options.tags, state.timelineTag || '', 'Todas tags');
+    state.timelineProject = selectedProject;
+    state.timelineTag = selectedTag;
     const filtered = items.filter((i) => {
-      const hay = [i.kind, i.title, i.content, (i.tags || []).join(' ')].join(' ').toLowerCase();
+      const slug = getItemSlug(i);
+      if (state.timelineProject && slug !== state.timelineProject) return false;
+      if (state.timelineTag) {
+        const itTags = Array.isArray(i.tags) ? i.tags.map((t) => String(t)) : [];
+        if (!itTags.includes(state.timelineTag)) return false;
+      }
+      const hay = [i.kind, i.title, i.content, i.slug, (i.tags || []).join(' ')].join(' ').toLowerCase();
       return !filter || hay.includes(filter);
     });
     el.innerHTML = '';
@@ -744,6 +799,16 @@
 
   function setTimelineKind(kind) {
     state.timelineKind = kind;
+    renderTimeline();
+  }
+
+  function setTimelineProject(project) {
+    state.timelineProject = String(project || '');
+    renderTimeline();
+  }
+
+  function setTimelineTag(tag) {
+    state.timelineTag = String(tag || '');
     renderTimeline();
   }
 
