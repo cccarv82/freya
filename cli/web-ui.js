@@ -1268,6 +1268,42 @@
     }
   }
 
+  async function refreshQualityScore() {
+    const el = $('qualityScoreCard');
+    if (el) el.innerHTML = '<div class="help">Carregando score...</div>';
+    try {
+      const r = await api('/api/quality/score', { dir: dirOrDefault() });
+      if (!el) return;
+      if (r && r.needsInit) {
+        el.innerHTML = '<div class="help">Workspace não inicializado.</div>';
+        return;
+      }
+      const score = (r && typeof r.score === 'number') ? r.score : null;
+      const breakdown = (r && r.breakdown) ? r.breakdown : {};
+      const threshold = 90;
+      const status = (score !== null && score >= threshold) ? 'ok' : 'warn';
+
+      const line = (label, data, keyLabel) => {
+        if (!data) return '';
+        const pct = (typeof data.pct === 'number') ? `${data.pct}%` : 'n/a';
+        const detail = keyLabel ? `${data[keyLabel] || 0}/${data.total || 0}` : `${data.total || 0}`;
+        return `<div class=\"help\" style=\"margin-top:4px\"><b>${escapeHtml(label)}:</b> ${escapeHtml(pct)} (${escapeHtml(detail)})</div>`;
+      };
+
+      const html = `<div style=\"display:flex; justify-content:space-between; gap:10px; align-items:center\">`
+        + `<div style=\"min-width:0\"><div style=\"font-weight:800\">${score === null ? 'Sem score' : `Score: ${score}%`}</div>`
+        + `${line('Tasks com projectSlug', breakdown.tasks, 'withProjectSlug')}`
+        + `${line('Status com history', breakdown.status, 'withHistory')}`
+        + `${line('Blockers com projectSlug', breakdown.blockers, 'withProjectSlug')}`
+        + `</div>`
+        + `<div class=\"pill ${status}\">${status}</div>`
+        + `</div>`;
+      el.innerHTML = html;
+    } catch {
+      if (el) el.innerHTML = '<div class="help">Falha ao carregar score.</div>';
+    }
+  }
+
   async function refreshExecutiveSummary() {
     const el = $('executiveSummary');
     if (el) el.textContent = 'Carregando resumo...';
@@ -1706,6 +1742,7 @@
 
     if (isCompanionPage) {
       await refreshHealthChecklist();
+      await refreshQualityScore();
       await refreshExecutiveSummary();
       await refreshAnomalies();
       await refreshIncidents();
@@ -1759,6 +1796,7 @@
   window.setTimelineKind = setTimelineKind;
   window.refreshBlockersInsights = refreshBlockersInsights;
   window.refreshHealthChecklist = refreshHealthChecklist;
+  window.refreshQualityScore = refreshQualityScore;
   window.refreshExecutiveSummary = refreshExecutiveSummary;
   window.refreshAnomalies = refreshAnomalies;
   window.copyOut = copyOut;

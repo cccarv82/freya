@@ -1501,6 +1501,16 @@ function buildCompanionHtml(safeDefault, appVersion) {
 
             <section class="panel" style="margin-top:16px">
               <div class="panelHead" style="display:flex; align-items:center; justify-content:space-between; gap:10px">
+                <b>Qualidade de Log</b>
+                <button class="btn small" type="button" onclick="refreshQualityScore()">Atualizar</button>
+              </div>
+              <div class="panelBody">
+                <div id="qualityScoreCard"></div>
+              </div>
+            </section>
+
+            <section class="panel" style="margin-top:16px">
+              <div class="panelHead" style="display:flex; align-items:center; justify-content:space-between; gap:10px">
                 <b>Resumo Executivo</b>
                 <button class="btn small" type="button" onclick="refreshExecutiveSummary()">Atualizar</button>
               </div>
@@ -2110,6 +2120,74 @@ if (req.url === '/api/timeline') {
           summary = `${summary} ${blockersSentence}`.trim();
           summary = truncateText(summary, 260);
           return safeJson(res, 200, { ok: true, summary, stats: { recent: recent.length, openBlockers: openBlockers.length, ...counts } });
+        }
+
+        if (req.url === '/api/quality/score') {
+          if (!looksLikeFreyaWorkspace(workspaceDir)) {
+            return safeJson(res, 200, { ok: false, needsInit: true, error: 'Workspace not initialized' });
+          }
+
+          const pct = (count, total) => (total > 0 ? Math.round((count / total) * 1000) / 10 : null);
+
+          // Tasks with projectSlug
+          let tasksTotal = 0;
+          let tasksWithProject = 0;
+          const taskFile = path.join(workspaceDir, 'data', 'tasks', 'task-log.json');
+          if (exists(taskFile)) {
+            const taskDoc = readJsonOrNull(taskFile) || { tasks: [] };
+            const tasks = Array.isArray(taskDoc.tasks) ? taskDoc.tasks : [];
+            tasksTotal = tasks.length;
+            for (const t of tasks) {
+              const slug = String(t && t.projectSlug ? t.projectSlug : '').trim();
+              if (slug) tasksWithProject++;
+            }
+          }
+
+          // Status files with history array
+          let statusTotal = 0;
+          let statusWithHistory = 0;
+          const base = path.join(workspaceDir, 'data', 'Clients');
+          if (exists(base)) {
+            const stack = [base];
+            while (stack.length) {
+              const dirp = stack.pop();
+              const entries = fs.readdirSync(dirp, { withFileTypes: true });
+              for (const ent of entries) {
+                const full = path.join(dirp, ent.name);
+                if (ent.isDirectory()) stack.push(full);
+                else if (ent.isFile() && ent.name === 'status.json') {
+                  statusTotal++;
+                  const doc = readJsonOrNull(full) || {};
+                  if (Array.isArray(doc.history)) statusWithHistory++;
+                }
+              }
+            }
+          }
+
+          // Blockers with projectSlug
+          let blockersTotal = 0;
+          let blockersWithProject = 0;
+          const blockersFile = path.join(workspaceDir, 'data', 'blockers', 'blocker-log.json');
+          if (exists(blockersFile)) {
+            const blockersDoc = readJsonOrNull(blockersFile) || { blockers: [] };
+            const blockers = Array.isArray(blockersDoc.blockers) ? blockersDoc.blockers : [];
+            blockersTotal = blockers.length;
+            for (const b of blockers) {
+              const slug = String(b && b.projectSlug ? b.projectSlug : '').trim();
+              if (slug) blockersWithProject++;
+            }
+          }
+
+          const breakdown = {
+            tasks: { total: tasksTotal, withProjectSlug: tasksWithProject, pct: pct(tasksWithProject, tasksTotal) },
+            status: { total: statusTotal, withHistory: statusWithHistory, pct: pct(statusWithHistory, statusTotal) },
+            blockers: { total: blockersTotal, withProjectSlug: blockersWithProject, pct: pct(blockersWithProject, blockersTotal) }
+          };
+
+          const scoreParts = [breakdown.tasks.pct, breakdown.status.pct, breakdown.blockers.pct].filter((v) => typeof v === 'number');
+          const score = scoreParts.length ? Math.round((scoreParts.reduce((a, b) => a + b, 0) / scoreParts.length) * 10) / 10 : null;
+
+          return safeJson(res, 200, { ok: true, score, breakdown });
         }
 
         if (req.url === '/api/anomalies') {
