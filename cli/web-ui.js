@@ -1304,6 +1304,38 @@
     }
   }
 
+  async function refreshRiskSummary() {
+    const el = $('riskSummary');
+    if (el) el.innerHTML = '<div class="help">Carregando riscos...</div>';
+    try {
+      const r = await api('/api/risk/summary', { dir: dirOrDefault() });
+      if (!el) return;
+      if (r && r.needsInit) {
+        el.innerHTML = '<div class="help">Workspace não inicializado.</div>';
+        return;
+      }
+      const items = Array.isArray(r.items) ? r.items : [];
+      if (!items.length) {
+        el.innerHTML = '<div class="help">Sem riscos relevantes.</div>';
+        return;
+      }
+      const rows = items.map((it) => {
+        const age = (it.oldestBlockerDays != null) ? `${it.oldestBlockerDays}d` : 'n/a';
+        return `<div class=\"rep\">`
+          + `<div style=\"display:flex; justify-content:space-between; gap:10px; align-items:center\">`
+          + `<div style=\"min-width:0\"><div style=\"font-weight:800\">${escapeHtml(it.slug || '')}</div>`
+          + `<div class=\"help\" style=\"margin-top:4px\">Pendentes: ${escapeHtml(String(it.pendingTasks || 0))} · Blockers 7d+: ${escapeHtml(String(it.oldBlockers || 0))} · Mais antigo: ${escapeHtml(age)}</div>`
+          + `</div>`
+          + `<div class=\"pill warn\">risco</div>`
+          + `</div>`
+          + `</div>`;
+      }).join('');
+      el.innerHTML = rows;
+    } catch {
+      if (el) el.innerHTML = '<div class="help">Falha ao carregar riscos.</div>';
+    }
+  }
+
   async function refreshExecutiveSummary() {
     const el = $('executiveSummary');
     if (el) el.textContent = 'Carregando resumo...';
@@ -1745,6 +1777,7 @@
       await refreshQualityScore();
       await refreshExecutiveSummary();
       await refreshAnomalies();
+      await refreshRiskSummary();
       await refreshIncidents();
       await refreshHeatmap();
       return;
@@ -1799,6 +1832,7 @@
   window.refreshQualityScore = refreshQualityScore;
   window.refreshExecutiveSummary = refreshExecutiveSummary;
   window.refreshAnomalies = refreshAnomalies;
+  window.refreshRiskSummary = refreshRiskSummary;
   window.copyOut = copyOut;
   window.copyPath = copyPath;
   window.openSelected = openSelected;

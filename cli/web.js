@@ -1530,6 +1530,16 @@ function buildCompanionHtml(safeDefault, appVersion) {
             </section>
 
             <section class="panel" style="margin-top:16px">
+              <div class="panelHead" style="display:flex; align-items:center; justify-content:space-between; gap:10px">
+                <b>Resumo de Risco</b>
+                <button class="btn small" type="button" onclick="refreshRiskSummary()">Atualizar</button>
+              </div>
+              <div class="panelBody">
+                <div id="riskSummary"></div>
+              </div>
+            </section>
+
+            <section class="panel" style="margin-top:16px">
               <div class="panelHead"><b>Incident Radar</b></div>
               <div class="panelBody">
                 <div id="incidentsBox" class="log md" style="font-family: var(--sans);"></div>
@@ -2188,6 +2198,68 @@ if (req.url === '/api/timeline') {
           const score = scoreParts.length ? Math.round((scoreParts.reduce((a, b) => a + b, 0) / scoreParts.length) * 10) / 10 : null;
 
           return safeJson(res, 200, { ok: true, score, breakdown });
+        }
+
+        if (req.url === '/api/risk/summary') {
+          if (!looksLikeFreyaWorkspace(workspaceDir)) {
+            return safeJson(res, 200, { ok: false, needsInit: true, error: 'Workspace not initialized' });
+          }
+
+          const pendingThreshold = 5;
+          const daysThreshold = 7;
+          const now = Date.now();
+
+          const pendingByProject = {};
+          const taskFile = path.join(workspaceDir, 'data', 'tasks', 'task-log.json');
+          if (exists(taskFile)) {
+            const taskDoc = readJsonOrNull(taskFile) || { tasks: [] };
+            const tasks = Array.isArray(taskDoc.tasks) ? taskDoc.tasks : [];
+            for (const t of tasks) {
+              if (!t || t.status === 'COMPLETED') continue;
+              const slug = String(t.projectSlug || '').trim();
+              if (!slug) continue;
+              pendingByProject[slug] = (pendingByProject[slug] || 0) + 1;
+            }
+          }
+
+          const blockersByProject = {};
+          const oldestByProject = {};
+          const blockerFile = path.join(workspaceDir, 'data', 'blockers', 'blocker-log.json');
+          if (exists(blockerFile)) {
+            const blockerDoc = readJsonOrNull(blockerFile) || { blockers: [] };
+            const blockers = Array.isArray(blockerDoc.blockers) ? blockerDoc.blockers : [];
+            for (const b of blockers) {
+              if (!b) continue;
+              const status = String(b.status || '').toUpperCase();
+              if (status !== 'OPEN' && status !== 'MITIGATING') continue;
+              const slug = String(b.projectSlug || '').trim();
+              if (!slug) continue;
+              const createdAt = b.createdAt ? Date.parse(b.createdAt) : null;
+              if (!createdAt) continue;
+              const ageDays = Math.floor((now - createdAt) / (24 * 60 * 60 * 1000));
+              if (ageDays < daysThreshold) continue;
+              blockersByProject[slug] = (blockersByProject[slug] || 0) + 1;
+              if (oldestByProject[slug] == null || ageDays > oldestByProject[slug]) oldestByProject[slug] = ageDays;
+            }
+          }
+
+          const projects = new Set([...Object.keys(pendingByProject), ...Object.keys(blockersByProject)]);
+          const items = [];
+          for (const slug of projects) {
+            const pending = pendingByProject[slug] || 0;
+            const oldBlockers = blockersByProject[slug] || 0;
+            const oldestDays = oldestByProject[slug] || null;
+            if (pending <= pendingThreshold && oldBlockers === 0) continue;
+            items.push({ slug, pendingTasks: pending, oldBlockers, oldestBlockerDays: oldestDays });
+          }
+
+          items.sort((a, b) => {
+            if (b.oldBlockers !== a.oldBlockers) return b.oldBlockers - a.oldBlockers;
+            if (b.pendingTasks !== a.pendingTasks) return b.pendingTasks - a.pendingTasks;
+            return (b.oldestBlockerDays || 0) - (a.oldestBlockerDays || 0);
+          });
+
+          return safeJson(res, 200, { ok: true, items: items.slice(0, 5), threshold: { pending: pendingThreshold, days: daysThreshold } });
         }
 
         if (req.url === '/api/anomalies') {
